@@ -226,7 +226,7 @@ def cone(r, h, cx=0, cy=0, cz=0, seg=12):
 def ball_joint(r, seg=10, ring=6):
     return sphere(r, seg=seg, ring=ring)
 
-def ball_socket(r, depth, seg=10):
+def ball_socket(r, depth, seg=10, ring=6):
     tris = []
     for i in range(seg):
         a0, a1 = 2*math.pi*i/seg, 2*math.pi*(i+1)/seg
@@ -392,7 +392,7 @@ def articulated_bovine(s, jd):
     parts.append(Part(name="01_tronco", description="Corpo + úbere", triangles=trunk,
         joints=[Joint("pescoço", "ball_socket", (0, 4.0*s, 0.5*s), jd, jd*0.8, (True,True,True), "Cabeça")] +
                [Joint(f"pata_{side}", "hinge", (lx, 1.8*s, lz), jd*0.8, jd, (False,True,False), "Pata")
-                for side, (lx, lz) in [("fe", -1.2*s, 2.0*s),("fd", 1.2*s, 2.0*s),("te", -1.2*s, -2.0*s),("td", 1.2*s, -2.0*s)]]))
+                for side, lx, lz in [("fe", -1.2*s, 2.0*s),("fd", 1.2*s, 2.0*s),("te", -1.2*s, -2.0*s),("td", 1.2*s, -2.0*s)]]))
     
     head = [ellipsoid(1.0*s, 0.9*s, 1.5*s, 0, 0, 0.7*s, 12, 10)]
     head.append(ellipsoid(0.7*s, 0.6*s, 0.8*s, 0, -0.4*s, 1.7*s, 10, 8))

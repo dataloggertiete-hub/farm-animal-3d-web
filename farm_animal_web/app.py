@@ -48,7 +48,7 @@ def index():
                 download_path = zip_path
 
             else:  # articulado
-                piece_dir = gerar_articulado(animal, escala, joint_d, str(out_dir))
+                piece_dir = Path(gerar_articulado(animal, escala, joint_d, str(out_dir)))
                 # ZIP com TODAS as peças + guia
                 zip_path = out_dir / f"{animal}_articulado.zip"
                 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
