@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  farm-animal-3d-web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./generated:/app/generated
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
