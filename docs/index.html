@@ -3,102 +3,114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gerador 3D de Animais de Fazenda - Detalhes Anatômicos</title>
+<title>Gerador 3D de Animais - Detalhe Anatômico Máximo</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  body { background:#f0f2f5; margin:0; }
-  .container-fluid { max-width:1440px; }
-  .card { box-shadow:0 2px 10px rgba(0,0,0,.08); border:none; }
-  #viewer { width:100%; height:580px; border-radius:8px; position:relative; overflow:hidden; }
+  body { background:#e8eaf6; margin:0; font-family:'Segoe UI',sans-serif; }
+  .container-fluid { max-width:1500px; }
+  .card { box-shadow:0 4px 15px rgba(0,0,0,.08); border:none; border-radius:10px; }
+  #viewer { width:100%; height:620px; border-radius:10px; position:relative; overflow:hidden; }
   #viewer canvas { display:block; width:100%; height:100%; }
-  .loading { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-             background:rgba(255,255,255,.95); padding:1rem 1.5rem; border-radius:8px; display:none; z-index:10; text-align:center; }
-  .error-box { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-               background:rgba(220,53,69,.95); color:#fff; padding:1rem 1.5rem; border-radius:8px;
-               display:none; z-index:10; }
-  @media(max-width:991px){ #viewer { height:380px; } }
+  .loading-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+             background:rgba(255,255,255,.95); padding:1.2rem 1.8rem; border-radius:10px; display:none; z-index:10;
+             box-shadow:0 4px 20px rgba(0,0,0,.2); text-align:center; }
+  .spinner-border { width:1.8rem; height:1.8rem; }
+  .error-popup { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                background:rgba(220,53,69,.95); color:#fff; padding:1rem 1.5rem; border-radius:8px;
+                display:none; z-index:10; }
   .form-label { font-weight:600; }
   .small-muted { color:#6c757d; }
+  .anatomy-badge { background:#e7f5ff; color:#1971c2; padding:2px 8px; border-radius:10px; font-size:0.7rem; }
+  .detail-item { display:flex; align-items:center; gap:6px; margin-bottom:2px; font-size:0.78rem; }
+  .detail-dot { width:6px; height:6px; border-radius:50%; background:#4cc9f0; }
 </style>
 </head>
 <body>
 
-<div class="container-fluid py-3 px-3 px-lg-4">
-  <div class="row g-3">
+<div class="container-fluid py-4 px-3 px-lg-4">
+  <div class="row g-4">
+    <!-- Painel de Controle -->
     <div class="col-12 col-lg-3 order-2 order-lg-1">
-      <div class="card mb-3">
+      <div class="card mb-4">
         <div class="card-body p-3">
-          <h1 class="h5 mb-1">🦙 Animais de Fazenda 3D</h1>
-          <p class="small-muted mb-3">Modelos anatômicos realistas para impressão 3D.</p>
+          <h1 class="h5 mb-1 fw-bold">🦙🐄 Animal 3D Studio</h1>
+          <p class="small-muted mb-3">Modelos anatômicos realistas para impressão 3D</p>
 
           <div class="mb-3">
             <label class="form-label">🐄 Espécie</label>
             <select id="animal" class="form-select form-select-sm">
-              <option value="bovino">🐄 Bovino</option>
-              <option value="equino">🐴 Equino</option>
-              <option value="suino">🐷 Suíno</option>
-              <option value="ave">🐔 Ave</option>
-              <option value="ovino">🐑 Ovino</option>
+              <option value="bovino">🐄 Bovino (Vaca/Touro)</option>
+              <option value="equino">🐴 Equino (Cavalo/Passo)</option>
+              <option value="suino">🐷 Suíno (Porco)</option>
+              <option value="ave">🐓 Galinha (Galo/Galinha)</option>
+              <option value="ovino">🐑 Ovino (Ovelha/Carneiro)</option>
             </select>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">📐 Escala (mm)</label>
-            <input type="number" id="scale" value="10" step="0.5" min="5" max="30" class="form-control form-control-sm">
-            <div class="small-muted">10 mm ≈ 10×5×7 cm</div>
+            <label class="form-label">📐 Escala: <span id="scaleVal">10</span> mm</label>
+            <input type="range" id="scale" class="form-range" value="10" min="5" max="20" step="0.5">
+            <div class="small-muted">~10×5×7 cm na mão</div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">🛠️ Tipo</label>
-            <div class="form-check">
+            <label class="form-label">🛠️ Tipo de modelo</label>
+            <div class="form-check py-1">
               <input class="form-check-input" type="radio" name="tipo" value="solido" checked id="t-solido">
               <label class="form-check-label small" for="t-solido">Sólido (1 peça)</label>
             </div>
-            <div class="form-check">
+            <div class="form-check py-1">
               <input class="form-check-input" type="radio" name="tipo" value="articulado" id="t-art">
               <label class="form-check-label small" for="t-art">Articulado (múltiplas peças)</label>
             </div>
           </div>
 
           <div class="mb-3" id="joint-field" style="display:none;">
-            <label class="form-label">🔩 Diâmetro da junta (mm)</label>
-            <input type="number" id="joint" value="3" step="0.5" min="1" max="10" class="form-control form-control-sm">
+            <label class="form-label">🔩 Diâmetro da junta: <span id="jointVal">3</span> mm</label>
+            <input type="range" id="joint" class="form-range" value="3" min="1" max="8" step="0.5">
           </div>
 
-          <div class="d-grid gap-2">
-            <button id="btn-view" class="btn btn-primary btn-sm">🔄 Ver no 3D</button>
-            <button id="btn-stl" class="btn btn-outline-success btn-sm">📦 STL (Sólido)</button>
-            <button id="btn-zip" class="btn btn-outline-dark btn-sm">📦 ZIP (Articulado)</button>
+          <div class="d-grid gap-2 pt-2">
+            <button id="btn-view" class="btn btn-primary btn-sm py-2 fw-semibold">🔄 Gerar no 3D</button>
+            <button id="btn-stl" class="btn btn-outline-success btn-sm py-2">📥 STL (Sólido)</button>
+            <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2">📥 ZIP (Articulado)</button>
           </div>
 
-          <hr class="my-3">
-          <div class="small text-muted">
-            <strong>Controles:</strong> Arrastar→girar | Scroll→zoom | Botão direito→mover<br>
-            <strong>Impressão:</strong> PLA/PETG · 20% fill · 0.2mm camada
+          <div class="mt-3 pt-2 border-top">
+            <div class="d-flex justify-content-between small fw-medium text-primary mb-1">
+              <span>Detalhes Anatômicos</span><span id="animal-tag" class="anatomy-badge">Bovino</span>
+            </div>
+            <div id="anatomy-list" class="small"></div>
           </div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-body p-3">
-          <div id="status-text" class="small mb-1">Pronto</div>
-          <div class="progress" style="height:6px;">
+          <div id="status-text" class="small mb-2 fw-medium">Pronto para gerar</div>
+          <div class="progress" style="height:5px;">
             <div id="progress-bar" class="progress-bar bg-success" style="width:100%"></div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Visualizador 3D -->
     <div class="col-12 col-lg-9 order-1 order-lg-2">
       <div class="card h-100">
+        <div class="card-header bg-white px-3 py-2 d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-semibold">🖥️ Visualizador 3D - WebGL</h6>
+          <div class="small text-muted">OrbitControls activado</div>
+        </div>
         <div class="card-body p-0">
           <div id="viewer">
             <canvas id="viewer-canvas"></canvas>
-            <div class="loading" id="loading">
-              <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-              <div>Gerando modelo 3D…</div>
+            <div class="loading-overlay" id="loading">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <div class="fw-medium">Gerando modelo anatômico...</div>
+              <div class="small text-muted mt-1">Construindo geometria detalhada</div>
             </div>
-            <div class="error-box" id="errorbox"></div>
+            <div class="error-popup" id="errorbox"></div>
           </div>
         </div>
       </div>
@@ -112,13 +124,14 @@
   "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
 }}
 </script>
+
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* =====================================================================
-   GERADOR DE GEOMETRIA - Versão Detalhada Anatômica
-   Coordenadas: Y=altura, Z=frente, X=lateral. Solo em Y=0.
+   GERADOR DE GEOMETRIA - Precisão Anatômica Máxima
+   Coordenadas: Y=altura(cima), Z=frente, X=lateral. Solo Y=0.
    ===================================================================== */
 class Gen {
   constructor(){ this.v = []; }
@@ -135,8 +148,8 @@ class Gen {
     this.v.push(nx, ny, nz, ax, ay, az, b[0], b[1], b[2], c[0], c[1], c[2]);
   }
 
-  // Elipsoide (elipses 3D)
-  ellipsoid(rx, ry, rz, cx=0, cy=0, cz=0, seg=20, ring=16) {
+  // Elipsoide
+  ellipsoid(rx, ry, rz, cx=0, cy=0, cz=0, seg=22, ring=16) {
     for (let i = 0; i < ring; i++) {
       let la0 = Math.PI * (-0.5 + i / ring);
       let la1 = Math.PI * (-0.5 + (i+1) / ring);
@@ -161,8 +174,8 @@ class Gen {
     this.ellipsoid(r, r, r, cx, cy, cz, seg, ring);
   }
 
-  // Tronco (cones e cilindros): rBot em y=-h/2, rTop em y=+h/2
-  frustum(rBot, rTop, h, cx=0, cy=0, cz=0, seg=16) {
+  // Tronco de cone/cilindro
+  frustum(rBot, rTop, h, cx=0, cy=0, cz=0, seg=18) {
     let hh = h/2;
     for (let i = 0; i < seg; i++) {
       let a0 = 2*Math.PI*i/seg, a1 = 2*Math.PI*(i+1)/seg;
@@ -194,11 +207,11 @@ class Gen {
   }
 
   cyl(r, h, cx=0, cy=0, cz=0, seg=16) { this.frustum(r, r, h, cx, cy, cz, seg); }
-  con(r, h, cx=0, cy=0, cz=0, seg=12) { this.frustum(r, 0.02, h, cx, cy, cz, seg); }
+  con(r, h, cx=0, cy=0, cz=0, seg=14) { this.frustum(r, 0.01, h, cx, cy, cz, seg); }
   joint(r, cx=0, cy=0, cz=0) { this.sphere(r, cx, cy, cz, 12, 8); }
 
-  // Cadeia de esferas (para crinas, rabo, lã)
-  chain(r, cx, cy, cz, dx, dy, dz, n=8, taper=0.8) {
+  // Cadeia de esferas alongada (para pelos, crinas, rabo)
+  chain(r, cx, cy, cz, dx, dy, dz, n=8, taper=0.85) {
     for (let i = 0; i < n; i++) {
       let t = i / (n-1 || 1);
       let r2 = r * (1 - t*(1-taper));
@@ -206,43 +219,51 @@ class Gen {
     }
   }
 
-  // Elipse 2D (anúnculo de esferas) - para detalhes de pelagem
-  ellipseRing(r, cx, cy, cz, n=12) {
+  // Círculo de esferas (para barbas, bigode)
+  ring(r, cx, cy, cz, axis='y', n=12, sphereR=0.06) {
     for (let i = 0; i < n; i++) {
       let a = 2*Math.PI*i/n;
-      this.sphere(r, cx + r*Math.cos(a), cy, cz + r*Math.sin(a), 6, 5);
+      if (axis === 'y') this.sphere(sphereR, cx + r*Math.cos(a), cy, cz + r*Math.sin(a), 5, 4);
+      if (axis === 'x') this.sphere(sphereR, cx, cy + r*Math.cos(a), cz + r*Math.sin(a), 5, 4);
+      if (axis === 'z') this.sphere(sphereR, cx + r*Math.cos(a), cy + r*Math.sin(a), cz, 5, 4);
     }
   }
 
-  // Disco/oval (para patas de aves, orelhas)
-  oval(rx, ry, cx=0, cy=0, cz=0, seg=16, thick=1) {
-    let th = thick * rx * 0.3;
+  // Arco de esferas (para chifres curvos)
+  arcChain(r, cx, cy, cz, angleStart, angleEnd, axis='z', n=6) {
+    for (let i = 0; i < n; i++) {
+      let t = i / (n-1 || 1);
+      let a = angleStart + (angleEnd - angleStart) * t;
+      let px, py, pz;
+      if (axis === 'z') { px = cx + r*Math.cos(a); py = cy + r*Math.sin(a); pz = cz; }
+      else if (axis === 'y') { px = cx + r*Math.cos(a); pz = cz + r*Math.sin(a); py = cy; }
+      else { py = cy + r*Math.cos(a); pz = cz + r*Math.sin(a); px = cx; }
+      this.sphere(r*0.7, px, py, pz, 6, 5);
+    }
+  }
+
+  // Elipse (discos achatados - para orelhas, barbas)
+  oval(rx, ry, cx=0, cy=0, cz=0, thickness=0.3, seg=14) {
+    let th = thickness * s_current * 0.15;
     for (let face = 0; face < 2; face++) {
       let sign = face === 0 ? 1 : -1;
       for (let i = 0; i < seg; i++) {
         let a0 = 2*Math.PI*i/seg, a1 = 2*Math.PI*(i+1)/seg;
         let c0x = rx*Math.cos(a0), c0y = ry*Math.sin(a0);
         let c1x = rx*Math.cos(a1), c1y = ry*Math.sin(a1);
-        let xoff = sign > 0 ? th/2 : -th/2;
         this.tri(
-          [c0x+cx, c0y+cy, xoff+cz],
-          [c1x+cx, c1y+cy, xoff+cz],
-          [c0x+cx, c0y+cy, -xoff+cz]
-        );
-        this.tri(
-          [c0x+cx, c0y+cy, -xoff+cz],
-          [c1x+cx, c1y+cy, xoff+cz],
-          [c1x+cx, c1y+cy, -xoff+cz]
+          [c0x*s_current, c0y*s_current, sign*th + cz],
+          [c1x*s_current, c1y*s_current, sign*th + cz],
+          [c0x*s_current, c0y*s_current, -sign*th + cz]
         );
       }
     }
-    // Lados
     for (let i = 0; i < seg; i++) {
       let a0 = 2*Math.PI*i/seg, a1 = 2*Math.PI*(i+1)/seg;
-      let x0 = rx*Math.cos(a0), y0 = ry*Math.sin(a0);
-      let x1 = rx*Math.cos(a1), y1 = ry*Math.sin(a1);
-      this.tri([x0+cx, y0+cy, th/2+cz], [x1+cx, y1+cy, th/2+cz], [x0+cx, y0+cy, -th/2+cz]);
-      this.tri([x0+cx, y0+cy, -th/2+cz], [x1+cx, y1+cy, th/2+cz], [x1+cx, y1+cy, -th/2+cz]);
+      let x0 = rx*Math.cos(a0)*s_current, y0 = ry*Math.sin(a0)*s_current;
+      let x1 = rx*Math.cos(a1)*s_current, y1 = ry*Math.sin(a1)*s_current;
+      this.tri([x0+cx,y0+cy,th+cz],[x1+cx,y1+cy,th+cz],[x0+cx,y0+cy,-th+cz]);
+      this.tri([x0+cx,y0+cy,-th+cz],[x1+cx,y1+cy,th+cz],[x1+cx,y1+cy,-th+cz]);
     }
   }
 
@@ -257,19 +278,6 @@ class Gen {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.computeVertexNormals();
     return geo;
-  }
-
-  // Elipse 2D (para detalhes de barba/orelhas)
-  arc(cx, cy, cz, r, aStart, aEnd, nSteps=6) {
-    for (let i = 0; i < nSteps; i++) {
-      let t0 = aStart + (aEnd - aStart) * i / nSteps;
-      let t1 = aStart + (aEnd - aStart) * (i+1) / nSteps;
-      this.tri(
-        [cx + r*Math.cos(t0), cy, cz + r*Math.sin(t0)],
-        [cx + r*Math.cos(t1), cy, cz + r*Math.sin(t1)],
-        [cx, cy + (r*0.2), cz]
-      );
-    }
   }
 
   toSTL(name="FarmAnimal3D") {
@@ -287,357 +295,468 @@ class Gen {
   }
 }
 
+let s_current = 1;
+
 /* =====================================================================
-   COMPONENTES ANATÔMICOS REUTILIZÁVEIS
+   FUNÇÕES DE CABEÇA ESPECIALIZADAS (alta precisão)
    ===================================================================== */
 
-// Pata de quadrupede com casco duplo (comeata)
-function quadLeg(g, x, z, h, rTop, rBot, kneeY, s) {
-  // Perna cônica principal
-  g.frustum(rBot, rTop*0.85, h*0.5, x, h*0.75, z, 16);
-  // Joelho/jarrete (esfera articulada)
-  if (kneeY) g.sphere(rTop*0.9, x, kneeY, z + rTop*0.3, 10, 8);
-  // Perna inferior
-  g.frustum(rTop*0.85, rTop*0.65, h*0.5, x, h*0.25, z, 14);
-  // Pé com casco duplo (2 toros)
-  g.frustum(rBot*1.2, rBot*0.8, h*0.1, x, h*0.05, z - rBot*0.3, 12);
-  g.frustum(rBot*1.2, rBot*0.8, h*0.1, x, h*0.05, z + rBot*0.3, 12);
-  // Solado (chifre de casco)
-  g.cyl(rBot*0.9, h*0.05, x, h*0.0, z, 14);
-}
-
-// Cabeça bovina com detalhes
-function headBovine(g, s, cx, cy, cz) {
-  // Cabeça principal
-  g.ellipsoid(0.9*s, 0.85*s, 1.1*s, cx, cy, cz);
-  // Focinho (alongado, robusto)
-  g.ellipsoid(0.72*s, 0.58*s, 0.75*s, cx, cy-0.35*s, cz+0.82*s);
-  // Narinas
-  g.sphere(0.12*s, cx-0.22*s, cy+0.05*s, cz+1.25*s, 6, 5);
-  g.sphere(0.12*s, cx+0.22*s, cy+0.05*s, cz+1.25*s, 6, 5);
-  // Olhos
-  g.sphere(0.18*s, cx-0.42*s, cy+0.25*s, cz+0.7*s, 6, 5);
-  g.sphere(0.18*s, cx+0.42*s, cy+0.25*s, cz+0.7*s, 6, 5);
-  // Chifres curvos (em espiral)
+function headBovineReal(g, s, cx, cy, cz) {
+  // Crânio principal (elipsoide alongado)
+  g.ellipsoid(0.95*s, 0.88*s, 1.25*s, cx, cy, cz);
+  // Focinho robusto com sulco (2 partes)
+  g.ellipsoid(0.76*s, 0.62*s, 0.82*s, cx, cy-0.42*s, cz+0.95*s);
+  // Narinas com sulco (2 narizolas)
+  g.sphere(0.13*s, cx-0.26*s, cy-0.45*s, cz+1.42*s, 7, 5);
+  g.sphere(0.13*s, cx+0.26*s, cy-0.45*s, cz+1.42*s, 7, 5);
+  // Nariz com sulco (discos achatados)
+  g.oval(0.22*s, 0.12*s, cx, cy-0.58*s, cz+1.45*s, 0.18);
+  // Olhos profundos
+  g.sphere(0.2*s, cx-0.46*s, cy+0.28*s, cz+0.82*s, 7, 5);
+  g.sphere(0.2*s, cx+0.46*s, cy+0.28*s, cz+0.82*s, 7, 5);
+  // Sobrancelhas (duas esferas)
+  g.sphere(0.12*s, cx-0.52*s, cy+0.78*s, cz+0.45*s, 6, 5);
+  g.sphere(0.12*s, cx+0.52*s, cy+0.78*s, cz+0.45*s, 6, 5);
+  // Chifres duplos em espiral (duas curvas paralelas)
   for (let side of [-1, 1]) {
-    let baseX = cx + side*0.42*s;
-    let baseY = cy + 0.92*s;
-    let baseZ = cz + 0.32*s;
-    let prevX = baseX, prevY = baseY, prevZ = baseZ;
-    for (let i = 0; i < 6; i++) {
-      let t = i / 5;
-      let r = 0.12*s * (1 - t*0.4);
-      let curve = t * 1.2; // curvatura lateral
-      let up = t * 0.9;    // curvatura vertical
-      let nx = baseX + side*curve*s*0.4;
-      let ny = baseY + up*s;
-      let nz = baseZ + side*0.15*s;
-      if (i === 0) g.sphere(r*1.3, nx, ny, nz, 6, 5);
-      else g.chain(r, prevX, prevY, prevZ, nx-prevX, ny-prevY, nz-prevZ, 4, 0.9);
-      prevX = nx; prevY = ny; prevZ = nz;
-    }
-  }
-  // Orelhas grandes e pontiagudas
-  g.ellipsoid(0.22*s, 0.55*s, 0.6*s, cx-1.05*s, cy+0.42*s, cz-0.15*s, 12, 10);
-  g.ellipsoid(0.22*s, 0.55*s, 0.6*s, cx+1.05*s, cy+0.42*s, cz-0.15*s, 12, 10);
-}
-
-// Cabeça de equino
-function headEquine(g, s, cx, cy, cz) {
-  // Cabeça
-  g.ellipsoid(0.65*s, 0.72*s, 1.4*s, cx, cy, cz);
-  // Focinho (pequeno, elegante)
-  g.ellipsoid(0.52*s, 0.48*s, 0.6*s, cx, cy-0.38*s, cz+0.95*s);
-  // Narinas delicadas
-  g.sphere(0.08*s, cx-0.22*s, cy+0.02*s, cz+1.35*s, 6, 4);
-  g.sphere(0.08*s, cx+0.22*s, cy+0.02*s, cz+1.35*s, 6, 4);
-  // Olhos
-  g.sphere(0.16*s, cx-0.4*s, cy+0.35*s, cz+0.65*s, 6, 5);
-  g.sphere(0.16*s, cx+0.4*s, cy+0.35*s, cz+0.65*s, 6, 5);
-  // Orelhas longas e pontiagudas
-  g.con(0.14*s, 0.75*s, cx-0.33*s, cy+1.02*s, cz+0.15*s, 10);
-  g.con(0.14*s, 0.75*s, cx+0.33*s, cy+1.02*s, cz+0.15*s, 10);
-}
-
-// Cabeça de suíno
-function headPorine(g, s, cx, cy, cz) {
-  // Cabeça arredondada
-  g.sphere(1.05*s, cx, cy, cz, 14, 12);
-  // Focinho achatado e alongado (característico!)
-  g.ellipsoid(0.75*s, 0.45*s, 0.55*s, cx, cy-0.42*s, cz+0.95*s, 14, 8);
-  g.ellipsoid(0.58*s, 0.38*s, 0.48*s, cx, cy-0.6*s, cz+1.35*s, 12, 8);
-  // Narinas grandes e patetas
-  g.sphere(0.15*s, cx-0.28*s, cy-0.45*s, cz+1.75*s, 8, 6);
-  g.sphere(0.15*s, cx+0.28*s, cy-0.45*s, cz+1.75*s, 8, 6);
-  // Olhos grandes
-  g.sphere(0.22*s, cx-0.45*s, cy+0.32*s, cz+0.75*s, 8, 6);
-  g.sphere(0.22*s, cx+0.45*s, cy+0.32*s, cz+0.75*s, 8, 6);
-  // Oreltas grandes e caídas (característica do porco)
-  g.ellipsoid(0.2*s, 0.75*s, 0.55*s, cx-0.95*s, cy+0.15*s, cz+0.45*s, 14, 10);
-  g.ellipsoid(0.2*s, 0.75*s, 0.55*s, cx+0.95*s, cy+0.15*s, cz+0.45*s, 14, 10);
-}
-
-// Cabeça de ave
-function headAve(g, s, cx, cy, cz) {
-  g.sphere(0.62*s, cx, cy, cz, 12, 10);
-  // Bico alongado
-  g.con(0.18*s, 0.65*s, cx, cy-0.15*s, cz+0.75*s, 8);
-  g.con(0.14*s, 0.35*s, cx, cy-0.1*s, cz+1.35*s, 8);
-  // Narina
-  g.sphere(0.05*s, cx, cy-0.05*s, cz+1.65*s, 6, 4);
-  // Olhos
-  g.sphere(0.14*s, cx-0.32*s, cy+0.18*s, cz+0.45*s, 6, 5);
-  g.sphere(0.14*s, cx+0.32*s, cy+0.18*s, cz+0.45*s, 6, 5);
-  // Crista
-  g.sphere(0.16*s, cx, cy+0.75*s, cz, 8, 6);
-  g.sphere(0.21*s, cx-0.15*s, cy+0.82*s, cz+0.12*s, 8, 6);
-  g.sphere(0.21*s, cx+0.15*s, cy+0.82*s, cz-0.12*s, 8, 6);
-  // Barbela (wattle)
-  g.sphere(0.18*s, cx-0.18*s, cy-0.05*s, cz+0.45*s, 8, 6);
-  g.sphere(0.18*s, cx+0.18*s, cy-0.05*s, cz+0.45*s, 8, 6);
-  g.ellipseRing(0.08*s, cx, cy-0.35*s, cz+0.55*s, 8);
-}
-
-// Cabeça de ovino
-function headOvine(g, s, cx, cy, cz) {
-  g.sphere(0.75*s, cx, cy, cz, 12, 10);
-  // Focinho curto
-  g.ellipsoid(0.58*s, 0.48*s, 0.52*s, cx, cy-0.38*s, cz+0.78*s, 12, 8);
-  // Narinas
-  g.sphere(0.1*s, cx-0.2*s, cy-0.22*s, cz+1.15*s, 6, 5);
-  g.sphere(0.1*s, cx+0.2*s, cy-0.22*s, cz+1.15*s, 6, 5);
-  // Olhos
-  g.sphere(0.16*s, cx-0.34*s, cy+0.25*s, cz+0.55*s, 6, 5);
-  g.sphere(0.16*s, cx+0.34*s, cy+0.25*s, cz+0.55*s, 6, 5);
-  // Orelhas caídas
-  g.ellipsoid(0.15*s, 0.4*s, 0.45*s, cx-0.85*s, cy-0.05*s, cz+0.35*s, 12, 8);
-  g.ellipsoid(0.15*s, 0.4*s, 0.45*s, cx+0.85*s, cy-0.05*s, cz+0.35*s, 12, 8);
-  // Chifres curvados (em espiral)
-  for (let side of [-1, 1]) {
-    let baseX = cx + side*0.38*s;
-    let baseY = cy + 0.88*s;
-    let baseZ = cz + 0.18*s;
     for (let i = 0; i < 5; i++) {
       let t = i / 4;
-      let r = 0.11*s * (1 - t*0.5);
-      let curveX = baseX + side * t * 0.45 * s;
-      let curveZ = baseZ + side * t * t * 0.35 * s;
-      let curveY = baseY + t * 0.65 * s;
-      g.sphere(r*1.4, curveX, curveY, curveZ, 6, 5);
-      if (i > 0) {
-        let prevT = (i-1) / 4;
-        let pr = 0.11*s * (1 - prevT*0.5);
-        let px = baseX + side * prevT * 0.45 * s;
-        let pz = baseZ + side * prevT * prevT * 0.35 * s;
-        let py = baseY + prevT * 0.65 * s;
-        g.chain(Math.max(r, pr)*0.9, px, py, pz, curveX-px, curveY-py, curveZ-pz, 4, 0.85);
-      }
+      let curveX = cx + side * (0.42 + t*0.4) * s;
+      let curveY = cy + 0.95*s + t * 1.0 * s;
+      let curveZ = cz + 0.35*s + side * t * 0.55 * s;
+      let r = 0.12*s * (1.2 - t*0.4);
+      g.sphere(r, curveX, curveY, curveZ, 6, 5);
     }
   }
-  // Barba (para machos)
-  g.chain(0.08*s, cx-0.2*s, cy-0.5*s, cz+0.6*s, 0, -0.3*s, 0, 3, 0.7);
-  g.chain(0.08*s, cx+0.2*s, cy-0.5*s, cz+0.6*s, 0, -0.3*s, 0, 3, 0.7);
+  // Orelhas grandes e alongadas
+  g.oval(0.65*s, 1.9*s, cx-1.15*s, cy+0.52*s, cz-0.15*s, 0.45);
+  g.oval(0.65*s, 1.9*s, cx+1.15*s, cy+0.52*s, cz-0.15*s, 0.45);
 }
 
-// Pescoço arqueado com músculos
-function neckArc(g, s, startX, startY, startZ, endX, endY, endZ, baseR, nSeg=5) {
-  for (let i = 0; i < nSeg; i++) {
-    let t = i / (nSeg-1 || 1);
-    let nx = startX + (endX-startX)*t;
-    let ny = startY + (endY-startY)*t + Math.sin(t*Math.PI)*0.4*s; // curvatura
-    let nz = startZ + (endZ-startZ)*t;
-    let r = baseR * (1 - t*0.15);
-    g.sphere(r, nx, ny, nz, 12, 8);
+function headBovineBull(g, s, cx, cy, cz) {
+  // Version touro: maior, com chifres mais pesados
+  g.ellipsoid(1.05*s, 0.95*s, 1.35*s, cx, cy, cz);
+  g.ellipsoid(0.82*s, 0.68*s, 0.92*s, cx, cy-0.48*s, cz+1.05*s);
+  g.sphere(0.14*s, cx-0.3*s, cy-0.52*s, cz+1.52*s, 7, 5);
+  g.sphere(0.14*s, cx+0.3*s, cy-0.52*s, cz+1.52*s, 7, 5);
+  g.sphere(0.22*s, cx-0.52*s, cy+0.32*s, cz+0.85*s, 7, 5);
+  g.sphere(0.22*s, cx+0.52*s, cy+0.32*s, cz+0.85*s, 7, 5);
+  // Chifres grossos em espiral
+  for (let side of [-1, 1]) {
+    for (let i = 0; i < 6; i++) {
+      let t = i / 5;
+      let curveX = cx + side * (0.45 + t*0.65) * s;
+      let curveY = cy + 1.05*s + t * 1.3 * s;
+      let curveZ = cz + 0.42*s + side * t * t * 0.7 * s;
+      let r = 0.15*s * (1.5 - t*0.5);
+      g.sphere(r, curveX, curveY, curveZ, 7, 5);
+      if (i > 0) g.chain(0.12*s, cx + side*0.45*s, cy+1.05*s, cz+0.42*s,
+                        curveX - (cx + side*0.45*s),
+                        curveY - (cy+1.05*s),
+                        curveZ - (cz+0.42*s), 5, 0.85);
+    }
+  }
+  g.oval(0.75*s, 1.1*s, cx-1.25*s, cy+0.6*s, cz, 0.5);
+  g.oval(0.75*s, 1.1*s, cx+1.25*s, cy+0.6*s, cz, 0.5);
+}
+
+function headEquineReal(g, s, cx, cy, cz) {
+  // Crânio alongado
+  g.ellipsoid(0.72*s, 0.78*s, 1.55*s, cx, cy, cz);
+  // Focinho pequeno e arredondado
+  g.ellipsoid(0.58*s, 0.52*s, 0.68*s, cx, cy-0.4*s, cz+1.1*s);
+  // Narinas
+  g.sphere(0.09*s, cx-0.24*s, cy-0.02*s, cz+1.6*s, 6, 4);
+  g.sphere(0.09*s, cx+0.24*s, cy-0.02*s, cz+1.6*s, 6, 4);
+  // Olhos grandes
+  g.sphere(0.18*s, cx-0.42*s, cy+0.34*s, cz+0.72*s, 7, 5);
+  g.sphere(0.18*s, cx+0.42*s, cy+0.34*s, cz+0.72*s, 7, 5);
+  // Orelhas longas e pontiagudas (cônicas)
+  g.con(0.16*s, 0.85*s, cx-0.36*s, cy+1.15*s, cz+0.22*s, 12);
+  g.con(0.16*s, 0.85*s, cx+0.36*s, cy+1.15*s, cz+0.22*s, 12);
+  // Detalhe: lobo da orelha
+  g.sphere(0.12*s, cx-0.42*s, cy+1.6*s, cz+0.35*s, 6, 4);
+  g.sphere(0.12*s, cx+0.42*s, cy+1.6*s, cz+0.35*s, 6, 4);
+}
+
+function headPorineReal(g, s, cx, cy, cz) {
+  // Cabeça arredondada (típica)
+  g.sphere(1.15*s, cx, cy, cz, 16, 14);
+  // Focinho achatado e MUITO alongado (característico)
+  g.ellipsoid(0.82*s, 0.48*s, 0.62*s, cx, cy-0.48*s, cz+1.05*s, 14, 8);
+  g.ellipsoid(0.68*s, 0.42*s, 0.52*s, cx, cy-0.62*s, cz+1.55*s, 12, 8);
+  // Narinas grandes e patetas
+  g.sphere(0.16*s, cx-0.32*s, cy-0.52*s, cz+1.85*s, 8, 6);
+  g.sphere(0.16*s, cx+0.32*s, cy-0.52*s, cz+1.85*s, 8, 6);
+  // Olhos grandes e brilhantes
+  g.sphere(0.23*s, cx-0.5*s, cy+0.36*s, cz+0.72*s, 8, 6);
+  g.sphere(0.23*s, cx+0.5*s, cy+0.36*s, cz+0.72*s, 8, 6);
+  // Orelhas GRANDES e caídas (característica)
+  g.oval(0.58*s, 1.85*s, cx-1.05*s, cy+0.4*s, cz+0.55*s, 0.55);
+  g.oval(0.58*s, 1.85*s, cx+1.05*s, cy+0.4*s, cz+0.55*s, 0.55);
+  // Nariz com sulco (2 bolhas conectadas)
+  g.sphere(0.08*s, cx-0.12*s, cy-0.75*s, cz+1.95*s, 5, 4);
+  g.sphere(0.08*s, cx+0.12*s, cy-0.75*s, cz+1.95*s, 5, 4);
+}
+
+function headAveReal(g, s, cx, cy, cz) {
+  // Crânio redondo
+  g.sphere(0.68*s, cx, cy, cz, 14, 12);
+  // Bico alongado e curvo (duas partes)
+  g.con(0.18*s, 0.72*s, cx, cy-0.12*s, cz+0.85*s, 10);
+  g.con(0.15*s, 0.42*s, cx, cy-0.08*s, cz+1.55*s, 10);
+  // Narina
+  g.sphere(0.06*s, cx, cy-0.05*s, cz+1.95*s, 6, 4);
+  // Olhos grandes
+  g.sphere(0.15*s, cx-0.34*s, cy+0.2*s, cz+0.52*s, 7, 5);
+  g.sphere(0.15*s, cx+0.34*s, cy+0.2*s, cz+0.52*s, 7, 5);
+  // Crista (cockscomb) - formato de onda
+  for (let i = 0; i < 5; i++) {
+    let w = 0.22*s - i*0.04*s;
+    let off = (2-i) * 0.15*s;
+    g.ellipsoid(w, 0.38*s, 0.28*s, cx+off, cy+0.85*s, cz+0.12*s);
+  }
+  // Barbela (wattle) inferior - 2 bolhas grandes
+  g.sphere(0.2*s, cx-0.22*s, cy-0.15*s, cz+0.52*s, 8, 6);
+  g.sphere(0.2*s, cx+0.22*s, cy-0.15*s, cz+0.52*s, 8, 6);
+  // Bigode (pelos) - círculo de esferas pequenas
+  g.ring(0.18*s, cx, cy-0.15*s, cz+0.72*s, 'y', 16, 0.04*s);
+  // Detalhe: narina inferior (barbela)
+  g.ellipseRing(0.14*s, cx, cy-0.35*s, cz+0.65*s, 10);
+}
+
+function headOvineReal(g, s, cx, cy, cz) {
+  // Crânio arredondado
+  g.sphere(0.8*s, cx, cy, cz, 14, 12);
+  // Focinho curto e redondo
+  g.ellipsoid(0.64*s, 0.54*s, 0.58*s, cx, cy-0.4*s, cz+0.85*s, 14, 10);
+  // Narinas
+  g.sphere(0.11*s, cx-0.22*s, cy-0.28*s, cz+1.25*s, 7, 5);
+  g.sphere(0.11*s, cx+0.22*s, cy-0.28*s, cz+1.25*s, 7, 5);
+  // Olhos grandes (expressivos)
+  g.sphere(0.17*s, cx-0.38*s, cy+0.26*s, cz+0.58*s, 7, 5);
+  g.sphere(0.17*s, cx+0.38*s, cy+0.26*s, cz+0.58*s, 7, 5);
+  // Orelhas caídas (longas)
+  g.oval(0.58*s, 1.55*s, cx-0.92*s, cy-0.02*s, cz+0.42*s, 0.48);
+  g.oval(0.58*s, 1.55*s, cx+0.92*s, cy-0.02*s, cz+0.42*s, 0.48);
+  // Chifres em espiral (duplos)
+  for (let side of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      let t = i / 6;
+      let curveX = cx + side * (0.42 + t*0.6) * s;
+      let curveY = cy + 0.92*s + t * 1.1 * s;
+      let curveZ = cz + 0.25*s + side * t * t * 0.8 * s;
+      let r = 0.13*s * (1.4 - t*0.5);
+      g.sphere(r, curveX, curveY, curveZ, 7, 5);
+    }
+  }
+  // Barba (bigode chinês - típico de carneiro)
+  g.chain(0.09*s, cx-0.25*s, cy-0.55*s, cz+0.35*s, 0, -0.35*s, 0.05*s, 6, 0.7);
+  g.chain(0.09*s, cx+0.25*s, cy-0.55*s, cz+0.35*s, 0, -0.35*s, -0.05*s, 6, 0.7);
+  // Detalhe: sobrancelhas
+  g.sphere(0.08*s, cx-0.42*s, cy+0.65*s, cz+0.35*s, 5, 4);
+  g.sphere(0.08*s, cx+0.42*s, cy+0.65*s, cz+0.35*s, 5, 4);
+}
+
+/* =====================================================================
+   FUNÇÕES DE PERNAS COM DETALHES MUSCULARES
+   ===================================================================== */
+
+function legHoof(g, s, x, z, totalHeight, isFront=true) {
+  let h = totalHeight;
+  let kneeY = isFront ? h*0.68 : h*0.62;
+
+  // Coxa (músculo)
+  g.frustum(0.58*s, 0.42*s, h*0.28, x, h*0.86, z, 16);
+  // Joelho
+  g.sphere(0.45*s, x, kneeY, z + 0.32*s, 12, 10);
+  // Perna inferior
+  g.frustum(0.42*s, 0.32*s, h*0.42, x, h*0.55, z, 16);
+  // Tornozelo/garfo
+  g.sphere(0.32*s, x, h*0.28, z + 0.28*s, 10, 8);
+  // Perna final
+  g.frustum(0.32*s, 0.22*s, h*0.28, x, h*0.14, z, 14);
+  // Casco duplo (chifre)
+  g.frustum(0.48*s, 0.32*s, h*0.08, x, h*0.12, z - 0.38*s, 14);
+  g.frustum(0.48*s, 0.32*s, h*0.08, x, h*0.12, z + 0.38*s, 14);
+  // Solado
+  g.cyl(0.36*s, h*0.1, x, h*0.08, z, 14);
+  // Detalhe: sulco no casco
+  g.cyl(0.24*s, h*0.04, x, h*0.16, z, 12);
+}
+
+/* =====================================================================
+   FUNÇÕES AUXILIARES
+   ===================================================================== */
+
+function udderComplex(g, s, cx, cy, cz) {
+  g.ellipsoid(0.72*s, 0.52*s, 0.85*s, cx, cy, cz);
+  // 4 tetos com detalhes
+  for (let [dx, dz, r] of [[-0.26*s, -0.12*s, 0.13*s], [0.26*s, -0.12*s, 0.13*s],
+                          [-0.26*s, 0.12*s, 0.11*s], [0.26*s, 0.12*s, 0.11*s]]) {
+    g.con(r, 0.42*s, cx+dx, cy-0.28*s, cz+dz, 8);
+    // Detalhe: orifício do leite
+    g.sphere(r*0.35, cx+dx, cy-0.62*s, cz+dz, 5, 4);
+    g.chain(r*0.45, cx+dx, cy-0.58*s, cz+dz, -0.02*s, -0.28*s, 0, 4, 0.7);
   }
 }
 
-// Udder bovino com 4 tetos
-function udder(g, s, cx, cy, cz) {
-  g.ellipsoid(0.6*s, 0.45*s, 0.7*s, cx, cy, cz);
-  for (let [dx, dz] of [[-0.22*s, -0.08*s],[0.22*s, -0.08*s],[-0.22*s, 0.08*s],[0.22*s, 0.08*s]]) {
-    g.con(0.08*s, 0.42*s, cx+dx, cy-0.18*s, cz+dz, 6);
+function maneHair(g, s, startX, startY, startZ, endX, endY, endZ, baseR) {
+  // Cadeia principal de esferas
+  neckArc(g, s, startX, startY, startZ, endX, endY, endZ, baseR, 6);
+  // Pelos individuais saindo da linha central
+  for (let i = 0; i < 6; i++) {
+    let t = i / 5;
+    let px = startX + (endX - startX) * t + (Math.random() - 0.5) * 0.2 * s;
+    let py = startY + (endY - startY) * t;
+    let pz = startZ + (endZ - startZ) * t;
+    let len = (0.3 + Math.random() * 0.4) * s;
+    let angX = (Math.random() - 0.5) * 0.6;
+    let angZ = (Math.random() - 0.5) * 0.4;
+    g.chain(baseR * 0.35, px, py, pz, angX*len, (Math.random()*0.4+0.4)*len, angZ*len, 5, 0.65);
+  }
+}
+
+function neckArc(g, s, startX, startY, startZ, endX, endY, endZ, baseR, nSeg=6) {
+  for (let i = 0; i < nSeg; i++) {
+    let t = i / (nSeg-1 || 1);
+    let px = startX + (endX - startX) * t;
+    let py = startY + (endY - startY) * t + Math.sin(t*Math.PI) * 0.45 * s;
+    let pz = startZ + (endZ - startZ) * t;
+    let r = baseR * (1 - t*0.12);
+    g.sphere(r, px, py, pz, 14, 12);
   }
 }
 
 /* =====================================================================
-   ANIMAIS SÓLIDOS (versões detalhadas)
+   ANIMAIS SÓLIDOS - VERSÃO HIPER-DETALHADA
    ===================================================================== */
 
 function genBovine(s) {
+  s_current = s;
   let g = new Gen();
-  // Tronco com cavidade torácica e abdômen
-  g.ellipsoid(2.2*s, 1.95*s, 3.1*s, 0, 3.4*s, 0);        // corpo principal
-  g.ellipsoid(2.0*s, 1.85*s, 1.3*s, 0, 3.5*s, 2.0*s);   // peito
-  g.ellipsoid(2.0*s, 1.85*s, 1.3*s, 0, 3.5*s, -2.0*s);  // garupa
-  // Sobrecarne (músculo visível)
-  g.ellipsoid(2.3*s, 1.2*s, 1.1*s, 0, 4.2*s, 0);        // lomo
+  let isBull = false; // vaca por padrão
 
-  // Úbere com 4 tetos
-  udder(g, s, 0, 1.7*s, -0.82*s);
+  // Tronco com volume realista
+  g.ellipsoid(2.3*s, 2.05*s, 3.25*s, 0, 3.6*s, 0);       // corpo principal
+  g.ellipsoid(2.1*s, 1.9*s, 1.4*s, 0, 3.7*s, 2.15*s);    // peito (cavidade torácica saliente)
+  g.ellipsoid(2.1*s, 1.9*s, 1.4*s, 0, 3.7*s, -2.15*s);   // garupa
+  // Músculos visíveis (coxia, abdominais)
+  g.ellipsoid(2.5*s, 1.0*s, 1.2*s, 0, 4.3*s, 0);         // coxia/lomo
+  g.ellipsoid(2.4*s, 0.75*s, 1.0*s, 0, 2.9*s, 0);        // ventre
 
-  // 4 patas cônicas com cascos
-  quadLeg(g, -1.3*s, 1.95*s, 2.6*s, 0.65*s, 0.4*s, 1.75*s, s);
-  quadLeg(g, 1.3*s, 1.95*s, 2.6*s, 0.65*s, 0.4*s, 1.75*s, s);
-  quadLeg(g, -1.3*s, -1.95*s, 2.6*s, 0.65*s, 0.4*s, 1.65*s, s);
-  quadLeg(g, 1.3*s, -1.95*s, 2.6*s, 0.65*s, 0.4*s, 1.65*s, s);
+  // Úbere com 4 tetos detalhados
+  udderComplex(g, s, 0, 1.75*s, -0.92*s);
 
-  // Pescoço arqueado (4 esferas)
-  neckArc(g, s, 0, 4.5*s, 1.95*s, 0, 5.8*s, 3.1*s, 1.1*s, 4);
+  // Pernas com cascos duplos detalhados
+  let legs = [[-1.35*s, 2.1*s, true], [1.35*s, 2.1*s, true],
+              [-1.35*s, -2.1*s, false], [1.35*s, -2.1*s, false]];
+  for (let [lx, lz, isFront] of legs) {
+    legHoof(g, s, lx, lz, 2.8*s, isFront);
+  }
+
+  // Pescoço com músculos (6 esferas)
+  neckArc(g, s, 0, 4.7*s, 2.1*s, 0, 5.8*s, 3.2*s, 1.15*s, 5);
 
   // Cabeça detalhada
-  headBovine(g, s, 0, 6.0*s, 3.7*s);
+  headBovineReal(g, s, 0, 6.2*s, 3.75*s);
 
-  // Rabo curvo + tufo de pelos
-  g.frustum(0.15*s, 0.08*s, 2.2*s, 0, 3.5*s, -3.05*s, 10);
-  g.chain(0.05*s, 0, 3.0*s, -3.1*s, 0, -0.25*s, -0.25*s, 8, 0.6);
+  // Rabo curvo com pelos
+  g.frustum(0.16*s, 0.09*s, 2.4*s, 0, 3.6*s, -3.15*s, 12);
+  g.chain(0.05*s, 0, 2.9*s, -3.2*s, 0, -0.3*s, -0.25*s, 10, 0.6);
+
+  return g;
+}
+
+function genBull(s) {
+  s_current = s;
+  let g = new Gen();
+  // Corpo musculoso
+  g.ellipsoid(2.4*s, 2.15*s, 3.4*s, 0, 3.7*s, 0);
+  g.ellipsoid(2.2*s, 2.0*s, 1.5*s, 0, 3.8*s, 2.25*s);
+  g.ellipsoid(2.2*s, 2.0*s, 1.5*s, 0, 3.8*s, -2.25*s);
+  g.ellipsoid(2.6*s, 1.1*s, 1.3*s, 0, 4.4*s, 0); // músculo lomo
+  // 4 patas
+  let legs = [[-1.4*s, 2.2*s, true], [1.4*s, 2.2*s, true],
+              [-1.4*s, -2.2*s, false], [1.4*s, -2.2*s, false]];
+  for (let [lx, lz, isFront] of legs) {
+    legHoof(g, s, lx, lz, 2.9*s, isFront);
+  }
+  // Pescoço curto e grosso (carneiro)
+  neckArc(g, s, 0, 4.9*s, 2.3*s, 0, 5.6*s, 3.6*s, 1.35*s, 4);
+  // Cabeça de touro (chifres pesados)
+  headBovineBull(g, s, 0, 5.9*s, 3.75*s);
+  // Rabo curto e grosso
+  g.cyl(0.22*s, 1.8*s, 0, 5.0*s, -3.3*s, 10);
+  // Detalhe: pelos no pescoço
+  maneHair(g, s, 0, 5.05*s, 2.4*s, 0, 5.6*s, 3.5*s, 0.85*s);
 
   return g;
 }
 
 function genEquine(s) {
+  s_current = s;
   let g = new Gen();
-  // Tronco atlético (longo e musculoso)
-  g.ellipsoid(1.75*s, 1.85*s, 3.2*s, 0, 3.9*s, -0.3*s);
-  g.ellipsoid(1.6*s, 1.65*s, 1.3*s, 0, 4.0*s, 2.1*s);  // peito
-  g.ellipsoid(1.6*s, 1.65*s, 1.3*s, 0, 4.0*s, -2.4*s); // garupa
+
+  // Tronco atlético e musculoso
+  g.ellipsoid(1.85*s, 1.9*s, 3.4*s, 0, 4.0*s, -0.3*s);
+  g.ellipsoid(1.7*s, 1.75*s, 1.4*s, 0, 4.15*s, 2.3*s);
+  g.ellipsoid(1.7*s, 1.75*s, 1.4*s, 0, 4.15*s, -2.6*s);
   // Músculo do ombro
-  g.ellipsoid(1.85*s, 1.1*s, 1.2*s, 0, 4.6*s, 2.0*s);
-  g.ellipsoid(1.85*s, 1.1*s, 1.2*s, 0, 4.6*s, -2.2*s);
+  g.ellipsoid(2.0*s, 1.2*s, 1.35*s, 0, 4.8*s, 2.2*s);
+  g.ellipsoid(2.0*s, 1.2*s, 1.35*s, 0, 4.8*s, -2.4*s);
+  // Músculo do quadril
+  g.ellipsoid(1.9*s, 1.3*s, 1.3*s, 0, 3.1*s, 2.3*s);
+  g.ellipsoid(1.9*s, 1.3*s, 1.3*s, 0, 3.1*s, -2.5*s);
 
-  // 4 patas longas com articulações
-  quadLeg(g, -0.95*s, 2.4*s, 3.4*s, 0.52*s, 0.28*s, 2.0*s, s);
-  quadLeg(g, 0.95*s, 2.4*s, 3.4*s, 0.52*s, 0.28*s, 2.0*s, s);
-  quadLeg(g, -0.92*s, -2.55*s, 3.4*s, 0.58*s, 0.32*s, 2.15*s, s);
-  quadLeg(g, 0.92*s, -2.55*s, 3.4*s, 0.58*s, 0.32*s, 2.15*s, s);
-
-  // Pescoço arqueado (fortemente característico)
-  neckArc(g, s, 0, 5.0*s, 1.8*s, 0, 6.4*s, 3.4*s, 1.1*s, 5);
-
-  // Cabeça longa
-  headEquine(g, s, 0, 6.9*s, 3.4*s);
-
-  // Crina (densinha, cadeia de esferas ao longo do pescoço)
-  for (let i = 0; i < 35; i++) {
-    let t = i / 34;
-    let py = 5.0*s + t * 1.4*s;
-    let pz = 1.8*s + Math.sin(t*Math.PI) * 0.4*s;
-    let r = 0.16*s * (1 - t*0.2);
-    let s2 = 0.55*s;
-    let offset = Math.cos(t*Math.PI) * 0.12*s;
-    g.chain(r, offset, py, pz, 0, 0.06*s, 0, 3, 0.75);
-    // Cabelos individuais mais longos
-    if (i % 3 === 0) {
-      g.chain(0.06*s, offset*0.7, py + 0.15*s, pz, 0, 0.25*s, 0.1*s, 4, 0.6);
-    }
+  // 4 pernas longas com músculos
+  let legs = [[-1.02*s, 2.5*s, true], [1.02*s, 2.5*s, true],
+              [-0.98*s, -2.7*s, false], [0.98*s, -2.7*s, false]];
+  for (let [lx, lz, isFront] of legs) {
+    legHoof(g, s, lx, lz, 3.8*s, isFront);
   }
 
-  // Rabo com crina inferior
-  g.chain(0.06*s, 0, 4.2*s, -3.4*s, 0, -1.2*s, 0.3*s, 8, 0.7);
-  g.chain(0.05*s, 0, 3.5*s, -3.2*s, 0, -0.8*s, 0.5*s, 6, 0.6);
+  // Pescoço arqueado (forte curvatura - característico)
+  neckArc(g, s, 0, 5.2*s, 1.95*s, 0, 6.6*s, 3.5*s, 1.15*s, 6);
+
+  // Cabeça longa e elegante
+  headEquineReal(g, s, 0, 7.05*s, 3.45*s);
+
+  // Crina (cabelos individuais densos)
+  for (let i = 0; i < 40; i++) {
+    let t = i / 39;
+    let py = 5.2*s + t * 1.8*s;
+    let pz = 1.95*s + Math.sin(t * Math.PI) * 0.45*s + Math.cos(t*3) * 0.15*s;
+    let r = 0.19*s * (1 - t*0.25);
+    if (i % 2 === 0) {
+      g.chain(r*0.4, 0, py, pz, (Math.random()-0.5)*0.15*s, 0.15*s, (Math.random()-0.5)*0.2*s, 7, 0.65);
+    } else {
+      g.chain(r*0.35, 0, py, pz, 0, 0.18*s, 0, 5, 0.7);
+    }
+  }
+  // Detalhe: crina no topo do pescoço (mais longa)
+  maneHair(g, s, 0, 5.3*s, 2.2*s, 0, 6.5*s, 3.7*s, 0.95*s);
+
+  // Rabo longo com penas
+  g.chain(0.075*s, 0, 4.35*s, -3.5*s, 0, -1.4*s, 0.45*s, 10, 0.7);
+  g.chain(0.055*s, 0, 3.2*s, -3.3*s, 0, -1.0*s, 0.65*s, 8, 0.65);
+  // Detalhe: pêlos no rabo
+  for (let i = 0; i < 6; i++) {
+    let t = i / 5;
+    g.chain(0.05*s, 0, 4.35*s + t*0.8*s, -3.5*s + t*0.3*s, 0.05*s, 0.12*s, 0.03*s, 4, 0.6);
+  }
 
   return g;
 }
 
 function genPorine(s) {
+  s_current = s;
   let g = new Gen();
+
   // Corpo gordo e arredondado
-  g.ellipsoid(2.5*s, 1.9*s, 2.8*s, 0, 2.9*s, 0);
-  g.ellipsoid(2.3*s, 1.7*s, 1.3*s, 0, 3.0*s, 1.95*s);  // peito
-  // Linha do ventre (curvatura inferior)
-  g.ellipsoid(2.4*s, 1.3*s, 2.0*s, 0, 1.8*s, 0);       // ventre
+  g.ellipsoid(2.6*s, 1.95*s, 2.95*s, 0, 3.0*s, 0);
+  g.ellipsoid(2.4*s, 1.75*s, 1.45*s, 0, 3.15*s, 2.15*s);
+  // Ventríbulo/gordura abdominal
+  g.ellipsoid(2.5*s, 1.45*s, 2.1*s, 0, 1.95*s, 0);
 
-  // 4 patas curtas e robustas
-  quadLeg(g, -1.5*s, 1.6*s, 1.8*s, 0.65*s, 0.46*s, 0, s);
-  quadLeg(g, 1.5*s, 1.6*s, 1.8*s, 0.65*s, 0.46*s, 0, s);
-  quadLeg(g, -1.5*s, -1.6*s, 1.8*s, 0.65*s, 0.46*s, 0, s);
-  quadLeg(g, 1.5*s, -1.6*s, 1.8*s, 0.65*s, 0.46*s, 0, s);
-
-  // Cabeça com focinho achatado (característico)
-  headPorine(g, s, 0, 3.4*s, 2.5*s);
-
-  // Rabo em ESPÍRAL (marcante!)
-  let baseY = 3.1*s;
-  let baseZ = -2.65*s;
-  let cx = 0, prevY = baseY, prevZ = baseZ;
-  for (let i = 0; i < 30; i++) {
-    let t = i / 29;
-    let ang = t * 4.5 * Math.PI; // ~2¼ voltas
-    let r = 0.32*s * (1 - t*0.3);
-    let ny = baseY - 0.2*s + r * Math.sin(ang) * 0.85;
-    let nz = baseZ - 0.15*s - t*0.12*s;
-    g.sphere(0.11*s * (1-t*0.2), cx, ny, nz, 7, 5);
-    if (i > 0) {
-      let pr = 0.32*s * (1 - (i-1)/29*0.3);
-      let py = baseY - 0.2*s + pr * Math.sin((i-1)/29 * 4.5 * Math.PI) * 0.85;
-      g.chain(0.11*s, cx, py, prevZ, 0, ny-py, nz-prevZ, 4, 0.8);
-    }
-    prevY = ny; prevZ = nz;
+  // 4 patas curtas e gordas
+  let legs = [[-1.55*s, 1.75*s, true], [1.55*s, 1.75*s, true],
+              [-1.55*s, -1.75*s, false], [1.55*s, -1.75*s, false]];
+  for (let [lx, lz, isFront] of legs) {
+    // Pernas com gordura visível
+    g.frustum(0.55*s, 0.35*s, 0.9*s, lx, 1.85*s, lz, 14);
+    g.sphere(0.4*s, lx, 0.95*s, lz + 0.28*s, 10, 8); // joelho
+    g.frustum(0.35*s, 0.45*s, 0.3*s, lx, 0.5*s, lz, 14); // pé
+    g.cyl(0.36*s, 0.35*s, lx, 0.35*s, lz, 12); // solado
   }
+
+  // Cabeça com focinho característico (muito achatado)
+  headPorineReal(g, s, 0, 3.55*s, 2.6*s);
+
+  // Rabo em ESPÍRAL (detalhe: 360° * 2.5 voltas)
+  let baseY = 3.2*s, baseZ = -2.75*s;
+  for (let i = 0; i < 45; i++) {
+    let t = i / 44;
+    let ang = t * 2.5 * Math.PI;
+    let r = 0.35*s * (1 - t*0.25);
+    g.sphere(0.085*s*(1-t*0.2), 0, baseY + r*Math.cos(ang)*0.9, baseZ + r*Math.sin(ang)*0.9 - t*0.15*s, 6, 5);
+  }
+
+  // Detalhe: mancha de pelos no focinho
+  g.chain(0.04*s, 0, 3.45*s, 4.75*s, 0, 0.15*s, 0, 6, 0.6);
+  g.chain(0.04*s, 0, 3.45*s, 4.75*s, 0.15*s, 0.12*s, 0, 6, 0.6);
 
   return g;
 }
 
 function genAve(s) {
+  s_current = s;
   let g = new Gen();
-  // Corpo (ovo, arredondado)
-  g.ellipsoid(1.5*s, 1.6*s, 2.0*s, 0, 3.0*s, 0);
-  // Peito
-  g.sphere(1.0*s, 0, 2.7*s, 0.9*s, 14, 12);
-  // Barriga (menos arredada)
-  g.ellipsoid(1.5*s, 1.3*s, 1.7*s, 0, 2.3*s, 0.3*s);
+  let tailFeathers = 16;
 
-  // Pescoço
-  g.chain(0.42*s, 0, 3.3*s, 0.95*s, 0, 0.8*s, 0.35*s, 5, 0.75);
+  // Corpo (ovo)
+  g.ellipsoid(1.55*s, 1.65*s, 2.1*s, 0, 3.15*s, 0);
+  g.sphere(1.05*s, 0, 2.85*s, 1.05*s, 16, 14);  // peito
+  g.ellipsoid(1.55*s, 1.35*s, 1.8*s, 0, 2.45*s, 0.32*s); // barriga
+
+  // Pescoço alongado (4 esferas)
+  neckArc(g, s, 0, 3.45*s, 1.05*s, 0, 4.1*s, 1.65*s, 0.42*s, 4);
 
   // Cabeça
-  headAve(g, s, 0, 4.05*s, 1.25*s);
+  headAveReal(g, s, 0, 4.55*s, 1.65*s);
 
-  // Asa (detalhada, com múltiplas penas)
+  // Asa (detalhe de penas individuais)
   for (let wing = -1; wing <= 1; wing += 2) {
-    let wx = wing * 1.45*s;
-    // Primeira pena da asa (granjo)
-    g.ellipsoid(0.16*s, 0.72*s, 0.3*s, wx, 2.9*s, 0.05*s);
-    // Penas da asa (primárias)
-    for (let i = 0; i < 6; i++) {
-      let py = 2.5*s - i*0.28*s;
-      let pz = i*0.35*s;
-      let r = 0.14*s;
-      let len = 0.7*s - i*0.05*s;
-      let ang = wing * 0.35;
-      g.frustum(r*0.7, r*0.5, len*0.5, wx, py, pz, 6);
+    let wx = wing * 1.55*s;
+    // Primeira pena maior (granjo primário)
+    g.ellipsoid(0.18*s, 0.82*s, 0.28*s, wx, 3.05*s, 0.12*s);
+    // Penas primárias (8 penas principais)
+    for (let i = 0; i < 8; i++) {
+      let py = 2.7*s - i*0.22*s;
+      let pz = i*0.42*s * wing * 0.3;
+      let len = 0.85*s - i*0.06*s;
+      let r = 0.13*s - i*0.015*s;
+      g.frustum(r, r*0.3, len, wx, py, pz, 6);
+    }
+    // Penas secundárias
+    for (let i = 0; i < 5; i++) {
+      let py = 3.2*s - i*0.18*s;
+      let pz = -0.4*s * wing;
+      g.ellipsoid(0.08*s, 0.45*s, 0.16*s, wx, py, pz);
     }
   }
 
-  // Rabo em leque (penas individuais)
-  for (let i = -6; i <= 6; i++) {
+  // Rabo em leque (16 penas individuais)
+  for (let i = -tailFeathers/2; i <= tailFeathers/2; i++) {
+    if (i === 0) continue;
     let seg = Math.abs(i);
-    let r = 0.14*s - seg*0.06*s;
-    let len = 0.8*s - seg*0.05*s;
-    let zangle = 0.25 + seg*0.1;
-    g.frustum(r, r*0.3, len, Math.cos(i*0.25)*0.25*s, 4.3*s + seg*0.15*s, -1.4*s, 8);
+    let r = 0.13*s - seg*0.045*s;
+    let len = 0.95*s - seg*0.045*s;
+    let zoff = i * 0.22 * s;
+    g.frustum(Math.max(r, 0.035*s), r*0.35, len, 0.3*s*seg/Math.abs(i),
+              4.5*s + seg*0.12*s, -1.6*s + zoff, 8);
   }
+  // Pena-central do rabo
+  g.ellipseRing(0.18*s, 0, 4.7*s, -1.45*s, 14);
 
-  // Pernas de galinha (4 patas, duas na frente duas atrás)
+  // Pernas (4 patas)
   for (let side of [-1, 1]) {
     // Perna dianteira
-    g.cyl(0.14*s, 1.6*s, side*0.5*s, 0.9*s, 0.55*s, 8);
-    // Pé com 3 garras
-    g.ellipseRing(0.34*s, side*0.5*s, 0.15*s, 0.75*s, 16);
-    // Garras detalhadas
-    for (let g = 0; g < 3; g++) {
-      let ang = (g - 1) * 0.18;
-      let gx = side*0.5*s + Math.sin(ang)*0.18*s;
-      let gz = 0.75*s + Math.cos(ang)*0.22*s;
-      g.frustum(0.05*s, 0.02*s, 0.4*s, gx, -0.05*s, gz, 6);
+    g.cyl(0.16*s, 1.8*s, side*0.55*s, 1.05*s, 0.62*s, 10);
+    // Pé com 4 garras
+    for (let g_ = 0; g_ < 4; g_++) {
+      let ang = (g_ - 1.5) * 0.25;
+      let gx = side*0.55*s + Math.sin(ang)*0.22*s;
+      let gz = 0.62*s + Math.cos(ang)*0.28*s;
+      g.frustum(0.055*s, 0.025*s, 0.55*s, gx, 0.05*s, gz, 6);
     }
     // Perna traseira
-    g.cyl(0.15*s, 1.65*s, side*0.6*s, 0.3*s, -0.5*s, 8);
-    g.ellipseRing(0.32*s, side*0.6*s, 0.14*s, -0.38*s, 16);
-    for (let gg = 0; gg < 3; gg++) {
-      let ang = (gg - 1) * 0.18;
-      let gx = side*0.6*s + Math.sin(ang)*0.16*s;
-      let gz = -0.38*s + Math.cos(ang)*0.2*s;
-      g.frustum(0.045*s, 0.018*s, 0.38*s, gx, -0.05*s, gz, 6);
+    g.cyl(0.17*s, 1.9*s, side*0.68*s, 0.42*s, -0.58*s, 10);
+    for (let gg = 0; gg < 4; gg++) {
+      let ang = (gg - 1.5) * 0.25;
+      let gx = side*0.68*s + Math.sin(ang)*0.2*s;
+      let gz = -0.58*s + Math.cos(ang)*0.26*s;
+      g.frustum(0.05*s, 0.022*s, 0.5*s, gx, 0.05*s, gz, 6);
     }
   }
 
@@ -645,81 +764,115 @@ function genAve(s) {
 }
 
 function genOvine(s) {
+  s_current = s;
   let g = new Gen();
-  // Corpo lã (núcleo)
-  g.ellipsoid(2.1*s, 2.0*s, 2.85*s, 0, 3.5*s, 0);
-  g.ellipsoid(2.0*s, 1.85*s, 1.4*s, 0, 3.6*s, 1.9*s);  // peito
-  g.ellipsoid(2.0*s, 1.85*s, 1.4*s, 0, 3.6*s, -1.9*s); // garupa
 
-  // LÃ - tufos de esferas em camadas
-  let woolBumps = [
-    [-1.5, 4.4, 1.3, 0.88],[-1.5, 4.5, -1.3, 0.88],[1.5, 4.4, 1.3, 0.88],[1.5, 4.5, -1.3, 0.88],
-    [-1.7, 3.4, 0.7, 0.82],[1.7, 3.4, 0.7, 0.82],[-1.7, 3.4, -0.7, 0.82],[1.7, 3.4, -0.7, 0.82],
-    [0, 5.1, 2.1, 0.88],[0, 5.1, -2.1, 0.88],
-    [0, 5.4, 0, 0.95],
-    [-2.0, 4.0, 0, 0.85],[2.0, 4.0, 0, 0.85],
-    [-1.3, 4.7, 0.9, 0.82],[1.3, 4.7, 0.9, 0.82],
-    [-1.3, 4.7, -0.9, 0.82],[1.3, 4.7, -0.9, 0.82],
-    [0, 4.0, 2.4, 0.8],[0, 4.0, -2.4, 0.8],
-    [-0.8, 4.3, 2.1, 0.78],[0.8, 4.3, 2.1, 0.78],
-    [-0.8, 4.3, -2.1, 0.78],[0.8, 4.3, -2.1, 0.78],
-    [-1.1, 3.7, 1.9, 0.8],[1.1, 3.7, 1.9, 0.8],
-  ];
-  for (let [bx, by, bz, br] of woolBumps) g.sphere(br*s, bx*s, by*s, bz*s, 9, 7);
+  // Corpo lã (volumoso)
+  g.ellipsoid(2.15*s, 2.1*s, 2.95*s, 0, 3.7*s, 0);
+  g.ellipsoid(2.05*s, 1.95*s, 1.5*s, 0, 3.85*s, 2.05*s);
+  g.ellipsoid(2.05*s, 1.95*s, 1.5*s, 0, 3.85*s, -2.05*s);
 
-  // Pernas longas e finas
-  quadLeg(g, -1.05*s, 1.6*s, 2.5*s, 0.42*s, 0.26*s, 0, s);
-  quadLeg(g, 1.05*s, 1.6*s, 2.5*s, 0.42*s, 0.26*s, 0, s);
-  quadLeg(g, -1.05*s, -1.6*s, 2.5*s, 0.42*s, 0.26*s, 0, s);
-  quadLeg(g, 1.05*s, -1.6*s, 2.5*s, 0.42*s, 0.26*s, 0, s);
+  // LÃ - 3 camadas de tufts (muito detalhado)
+  // Camada superior (mais longa)
+  for (let row = 0; row < 3; row++) {
+    for (let col = -2; col <= 2; col++) {
+      for (let d = -1; d <= 1; d += 2) {
+        let py = 4.3*s + row*0.65*s;
+        let pr = 0.88*s - row*0.1*s;
+        let pz = d * (1.6 + row*0.2) * s + col*0.8*s;
+        let px = col * 0.6 * s;
+        if (Math.random() > 0.05) g.sphere(pr, px, py, pz, 9, 7);
+      }
+    }
+  }
+  // Camada de lado (muito volumosa)
+  for (let i = 0; i < 20; i++) {
+    let t = i / 19;
+    let py = 3.8*s + t * 0.6 * s;
+    let pr = 1.05*s * (1 - t*0.25);
+    let px = 2.1*s + Math.sin(t*Math.PI)*0.1*s;
+    g.sphere(pr, px, py, 0, 9, 7);
+    g.sphere(pr, -px, py, 0, 9, 7);
+  }
+  // Camada inferior (costas)
+  for (let i = 0; i < 8; i++) {
+    let t = i / 7;
+    let py = 5.2*s + t*0.7*s;
+    let pz = -2.3*s + t*0.2*s;
+    g.sphere(0.82*s, 0, py, pz, 9, 7);
+    g.sphere(0.82*s, 0, py, -pz, 9, 7);
+  }
+  // Camada central (mais densa)
+  for (let ring = 0; ring < 4; ring++) {
+    let r = 2.2*s - ring*0.6*s;
+    let h = 4.5*s + ring*1.0*s;
+    let num = 14 - ring*2;
+    for (let i = 0; i < num; i++) {
+      let a = 2*Math.PI*i/num;
+      g.sphere(0.65*s, r*Math.cos(a), h, r*Math.sin(a), 7, 6);
+    }
+  }
+
+  // Pernas finas
+  for (let [lx, lz] of [[-1.18*s, 1.75*s], [1.18*s, 1.75*s], [-1.18*s, -1.75*s], [1.18*s, -1.75*s]]) {
+    g.frustum(0.32*s, 0.18*s, 2.75*s, lx, 1.4*s, lz, 18);
+    g.sphere(0.24*s, lx, 0.85*s, lz + 0.22*s, 10, 8); // joelho
+    g.frustum(0.18*s, 0.14*s, 2.0*s, lx, 0.45*s, lz, 16);
+    g.frustum(0.22*s, 0.27*s, 0.28*s, lx, 0.22*s, lz, 14); // casco
+  }
 
   // Cabeça pequena
-  headOvine(g, s, 0, 5.1*s, 2.7*s);
+  headOvineReal(g, s, 0, 5.25*s, 2.85*s);
 
   // Rabo curto
-  g.sphere(0.4*s, 0, 3.9*s, -2.8*s, 8, 6);
+  g.sphere(0.42*s, 0, 4.1*s, -2.95*s, 10, 8);
+  g.chain(0.06*s, 0, 3.8*s, -2.9*s, 0, -0.2*s, -0.1*s, 5, 0.6);
 
   return g;
 }
 
 /* =====================================================================
-   ANIMAIS ARTICULADOS
+   VERSÕES ARTICULADAS - Com detalhes
    ===================================================================== */
 
 function partsBovine(s) {
   let parts = [];
 
-  // Tronco com pescoço, úbere e rabo
+  // Tronco
   let t = new Gen();
-  t.ellipsoid(2.2*s, 1.95*s, 3.1*s, 0, 3.4*s, 0);
-  t.ellipsoid(2.0*s, 1.85*s, 1.3*s, 0, 3.5*s, 2.0*s);
-  t.ellipsoid(2.0*s, 1.85*s, 1.3*s, 0, 3.5*s, -2.0*s);
-  udder(t, s, 0, 1.7*s, -0.82*s);
-  neckArc(t, s, 0, 4.5*s, 1.95*s, 0, 5.6*s, 3.1*s, 1.1*s, 4);
-  t.joint(0.55*s, 0, 5.75*s, 3.25*s); // soquete cabeça
-  t.frustum(0.15*s, 0.08*s, 2.2*s, 0, 3.5*s, -3.05*s, 10);
-  t.chain(0.05*s, 0, 3.0*s, -3.1*s, 0, -0.25*s, -0.25*s, 6, 0.6);
+  s_current = s;
+  t.ellipsoid(2.3*s, 2.05*s, 3.25*s, 0, 3.6*s, 0);
+  t.ellipsoid(2.1*s, 1.9*s, 1.4*s, 0, 3.7*s, 2.15*s);
+  t.ellipsoid(2.1*s, 1.9*s, 1.4*s, 0, 3.7*s, -2.15*s);
+  t.ellipsoid(2.5*s, 1.0*s, 1.2*s, 0, 4.3*s, 0);
+  udderComplex(t, s, 0, 1.75*s, -0.92*s);
+  neckArc(t, s, 0, 4.7*s, 2.1*s, 0, 5.6*s, 3.2*s, 1.15*s, 5);
+  t.joint(0.6*s, 0, 5.75*s, 3.35*s);
+  t.frustum(0.16*s, 0.09*s, 2.4*s, 0, 3.6*s, -3.15*s, 12);
+  t.chain(0.05*s, 0, 2.9*s, -3.2*s, 0, -0.3*s, -0.25*s, 8, 0.6);
   parts.push({name:"01_tronco", desc:"Tronco, pescoço, úbere, rabo", g:t});
 
   // Cabeça
   let h = new Gen();
-  headBovine(h, s, 0, 0, 0.3*s);
-  h.joint(0.45*s, 0, -1.35*s, 0.35*s); // bola conector
-  parts.push({name:"02_cabeca", desc:"Cabeça com chifres, orelhas, focinho", g:h});
+  s_current = s;
+  headBovineReal(h, s, 0, 0, 0.35*s);
+  h.joint(0.48*s, 0, -1.55*s, 0.42*s);
+  parts.push({name:"02_cabeca", desc:"Cabeça com chifres, orelhas, focinho, narina", g:h});
 
-  // Pernas (4 separadas)
+  // Pernas (4)
   let legData = [
-    ["03_pata_fe","Pata frontal ESQ",-1.3*s, 1.95*s],
-    ["04_pata_fd","Pata frontal DIR",1.3*s, 1.95*s],
-    ["05_pata_te","Pata traseira ESQ",-1.3*s, -1.95*s],
-    ["06_pata_td","Pata traseira DIR",1.3*s, -1.95*s]
+    ["03_pata_fe","Pata frontal ESQ", -1.35*s, 2.1*s],
+    ["04_pata_fd","Pata frontal DIR",  1.35*s, 2.1*s],
+    ["05_pata_te","Pata traseira ESQ", -1.35*s, -2.1*s],
+    ["06_pata_td","Pata traseira DIR",  1.35*s, -2.1*s]
   ];
   for (let [pn, pd, lx, lz] of legData) {
     let lg = new Gen();
-    lg.joint(0.5*s, 0, 1.05*s, 0);       // bola articulada
-    lg.frustum(0.4*s, 0.55*s, 1.2*s, 0, 0.25*s, 0, 14);
-    lg.frustum(0.39*s, 0.52*s, 0.16*s, 0, -0.35*s, 0, 14);
-    parts.push({name: pn, desc: pd, g: lg});
+    s_current = s;
+    let isFront = lz > 0;
+    legHoof(lg, s, 0, 0, 2.8*s, true);
+    lg.joint(0.5*s, 0, 1.2*s, 0); // bola
+    parts.push({name:pn, desc:pd+" (cônica, casco duplo, articulação)", g:lg});
   }
   return parts;
 }
@@ -728,45 +881,47 @@ function partsEquine(s) {
   let parts = [];
 
   let t = new Gen();
-  t.ellipsoid(1.75*s, 1.85*s, 3.2*s, 0, 3.9*s, -0.3*s);
-  t.ellipsoid(1.6*s, 1.65*s, 1.3*s, 0, 4.0*s, 2.1*s);
-  t.ellipsoid(1.6*s, 1.65*s, 1.3*s, 0, 4.0*s, -2.4*s);
-  t.ellipsoid(1.85*s, 1.1*s, 1.2*s, 0, 4.6*s, 2.0*s);
-  t.ellipsoid(1.85*s, 1.1*s, 1.2*s, 0, 4.6*s, -2.2*s);
-  // Pescoço + crina
-  neckArc(t, s, 0, 5.0*s, 1.8*s, 0, 6.2*s, 3.4*s, 1.1*s, 5);
-  // Crina (cadeia de esferas)
-  for (let i = 0; i < 20; i++) {
-    let tt = i / 19;
-    let py = 5.0*s + tt * 1.2*s;
-    let pz = 1.8*s + Math.sin(tt * Math.PI) * 0.3*s;
-    let pr = 0.18*s * (1 - tt*0.3);
-    t.chain(pr, 0, py, pz, 0, 0.08*s, 0.05*s, 5, 0.75);
+  s_current = s;
+  t.ellipsoid(1.85*s, 1.9*s, 3.4*s, 0, 4.0*s, -0.3*s);
+  t.ellipsoid(1.7*s, 1.75*s, 1.4*s, 0, 4.15*s, 2.3*s);
+  t.ellipsoid(1.7*s, 1.75*s, 1.4*s, 0, 4.15*s, -2.6*s);
+  t.ellipsoid(2.0*s, 1.2*s, 1.35*s, 0, 4.8*s, 2.2*s);
+  t.ellipsoid(2.0*s, 1.2*s, 1.35*s, 0, 4.8*s, -2.4*s);
+  neckArc(t, s, 0, 5.2*s, 1.95*s, 0, 6.4*s, 3.5*s, 1.15*s, 5);
+  // Crina
+  for (let i = 0; i < 25; i++) {
+    let tt = i / 24;
+    let py = 5.2*s + tt * 1.2*s;
+    let pz = 1.95*s + Math.sin(tt * Math.PI) * 0.4*s;
+    let pr = 0.19*s * (1 - tt*0.25);
+    t.chain(pr, 0, py, pz, 0, 0.09*s, 0.05*s, 5, 0.7);
   }
-  t.joint(0.45*s, 0, 6.35*s, 3.55*s); // soquete cabeça
+  t.joint(0.5*s, 0, 6.65*s, 3.7*s);
   t.frustum(0.12*s, 0.05*s, 2.4*s, 0, 3.8*s, -3.4*s, 10);
-  t.chain(0.05*s, 0, 3.5*s, -3.2*s, 0, -0.7*s, 0.25*s, 6, 0.7);
-  parts.push({name:"01_tronco", desc:"Tronco, pescoço arqueado, crina, rabo", g:t});
+  t.chain(0.055*s, 0, 3.3*s, -3.2*s, 0, -0.8*s, 0.3*s, 8, 0.7);
+  parts.push({name:"01_tronco", desc:"Tronco musculoso, pescoço arqueado, crina, rabo", g:t});
 
   let h = new Gen();
-  headEquine(h, s, 0, 0, 0.35*s);
-  h.joint(0.38*s, 0, -1.45*s, 0.15*s);
-  parts.push({name:"02_cabeca", desc:"Cabeça com orelhas longas e focinho", g:h});
+  s_current = s;
+  headEquineReal(h, s, 0, 0, 0.4*s);
+  h.joint(0.42*s, 0, -1.6*s, 0.25*s);
+  parts.push({name:"02_cabeca", desc:"Cabeça longa, orelhas pontiagudas, focinho", g:h});
 
   let legData = [
-    ["03_pata_fe","Pata frontal ESQ",-0.95*s, 2.4*s],
-    ["04_pata_fd","Pata frontal DIR",0.95*s, 2.4*s],
-    ["05_pata_te","Pata traseira ESQ",-0.92*s, -2.55*s],
-    ["06_pata_td","Pata traseira DIR",0.92*s, -2.55*s]
+    ["03_pata_fe","Pata frontal ESQ", -1.02*s, 2.5*s],
+    ["04_pata_fd","Pata frontal DIR",  1.02*s, 2.5*s],
+    ["05_pata_te","Pata traseira ESQ", -0.98*s, -2.7*s],
+    ["06_pata_td","Pata traseira DIR",  0.98*s, -2.7*s]
   ];
   for (let [pn, pd, lx, lz] of legData) {
     let lg = new Gen();
-    lg.joint(0.45*s, 0, 1.15*s, 0);
-    lg.frustum(0.25*s, 0.38*s, 1.8*s, 0, 0.15*s, 0, 14);
-    lg.sphere(0.3*s, 0, -0.4*s, 0.25*s, 10, 8);
-    lg.frustum(0.25*s, 0.32*s, 1.0*s, 0, -1.0*s, 0, 12);
-    lg.frustum(0.32*s, 0.38*s, 0.18*s, 0, -1.45*s, 0, 14);
-    parts.push({name: pn, desc: pd, g: lg});
+    s_current = s;
+    lg.joint(0.45*s, 0, 1.35*s, 0);
+    lg.frustum(0.26*s, 0.38*s, 1.8*s, 0, 0.25*s, 0, 14);
+    lg.sphere(0.32*s, 0, -0.35*s, 0.28*s, 10, 8);
+    lg.frustum(0.26*s, 0.32*s, 1.0*s, 0, -0.85*s, 0, 12);
+    lg.frustum(0.32*s, 0.38*s, 0.22*s, 0, -1.45*s, 0, 14);
+    parts.push({name:pn, desc:pd+" (longa, articulada, casco)", g:lg});
   }
   return parts;
 }
@@ -775,37 +930,40 @@ function partsPorine(s) {
   let parts = [];
 
   let t = new Gen();
-  t.ellipsoid(2.5*s, 1.9*s, 2.8*s, 0, 2.9*s, 0);
-  t.ellipsoid(2.3*s, 1.7*s, 1.3*s, 0, 3.0*s, 1.95*s);
-  t.ellipsoid(2.4*s, 1.3*s, 2.0*s, 0, 1.8*s, 0); // ventre
-  t.joint(0.55*s, 0, 3.5*s, 2.45*s); // soquete cabeça
+  s_current = s;
+  t.ellipsoid(2.6*s, 1.95*s, 2.95*s, 0, 3.0*s, 0);
+  t.ellipsoid(2.4*s, 1.75*s, 1.45*s, 0, 3.15*s, 2.15*s);
+  t.ellipsoid(2.5*s, 1.45*s, 2.1*s, 0, 1.95*s, 0);
+  t.joint(0.6*s, 0, 3.65*s, 2.55*s);
   // Rabo espiral
-  let baseY = 3.1*s, baseZ = -2.65*s;
-  for (let i = 0; i < 30; i++) {
-    let tt = i / 29;
-    let ang = tt * 4.5 * Math.PI;
-    let r = 0.32*s * (1 - tt*0.3);
-    t.sphere(0.11*s*(1-tt*0.2), 0, baseY - 0.2*s + r*Math.sin(ang)*0.85, baseZ - 0.15*s - tt*0.12*s, 7, 5);
+  let baseY = 3.2*s, baseZ = -2.75*s;
+  for (let i = 0; i < 45; i++) {
+    let tt = i / 44;
+    let ang = tt * 2.5 * Math.PI;
+    let r = 0.35*s * (1 - tt*0.25);
+    t.sphere(0.085*s*(1-tt*0.2), 0, baseY + r*Math.cos(ang)*0.9, baseZ + r*Math.sin(ang)*0.9 - tt*0.15*s, 6, 5);
   }
-  parts.push({name:"01_tronco", desc:"Corpo arredondado, ventre, rabo espiral", g:t});
+  parts.push({name:"01_tronco", desc:"Corpo arredondado, ventre, rabo espiral (2.5 voltas)", g:t});
 
   let h = new Gen();
-  headPorine(h, s, 0, 0, 0.75*s);
-  h.joint(0.45*s, 0, -1.25*s, 0.65*s);
-  parts.push({name:"02_cabeca", desc:"Cabeça achatada, focinho, orelhas caídas", g:h});
+  s_current = s;
+  headPorineReal(h, s, 0, 0, 0.8*s);
+  h.joint(0.48*s, 0, -1.4*s, 0.75*s);
+  parts.push({name:"02_cabeca", desc:"Cabeça com focinho achatado, orelhas caídas", g:h});
 
   let legData = [
-    ["03_pata_fe","Pata frontal ESQ",-1.5*s, 1.6*s],
-    ["04_pata_fd","Pata frontal DIR",1.5*s, 1.6*s],
-    ["05_pata_te","Pata traseira ESQ",-1.5*s, -1.6*s],
-    ["06_pata_td","Pata traseira DIR",1.5*s, -1.6*s]
+    ["03_pata_fe","Pata frontal ESQ", -1.55*s, 1.75*s],
+    ["04_pata_fd","Pata frontal DIR",  1.55*s, 1.75*s],
+    ["05_pata_te","Pata traseira ESQ", -1.55*s, -1.75*s],
+    ["06_pata_td","Pata traseira DIR",  1.55*s, -1.75*s]
   ];
   for (let [pn, pd, lx, lz] of legData) {
     let lg = new Gen();
-    lg.joint(0.5*s, 0, 0.85*s, 0);
-    lg.frustum(0.46*s, 0.55*s, 0.9*s, 0, 0.15*s, 0, 14);
-    lg.frustum(0.48*s, 0.52*s, 0.2*s, 0, -0.4*s, 0, 14);
-    parts.push({name: pn, desc: pd, g: lg});
+    s_current = s;
+    lg.joint(0.48*s, 0, 0.85*s, 0);
+    lg.frustum(0.42*s, 0.55*s, 0.9*s, 0, 0.15*s, 0, 14);
+    lg.frustum(0.45*s, 0.52*s, 0.25*s, 0, -0.35*s, 0, 14);
+    parts.push({name:pn, desc:pd+" (curta, robusta)", g:lg});
   }
   return parts;
 }
@@ -814,43 +972,43 @@ function partsAve(s) {
   let parts = [];
 
   let t = new Gen();
-  t.ellipsoid(1.5*s, 1.6*s, 2.0*s, 0, 3.0*s, 0);
-  t.sphere(1.0*s, 0, 2.7*s, 0.9*s, 14, 12);
-  t.ellipsoid(1.5*s, 1.3*s, 1.7*s, 0, 2.3*s, 0.3*s);
+  s_current = s;
+  t.ellipsoid(1.55*s, 1.65*s, 2.1*s, 0, 3.15*s, 0);
+  t.sphere(1.05*s, 0, 2.85*s, 1.05*s, 16, 14);
+  t.ellipsoid(1.55*s, 1.35*s, 1.8*s, 0, 2.45*s, 0.32*s);
   // Pescoço
-  t.chain(0.42*s, 0, 3.3*s, 0.95*s, 0, 0.7*s, 0.35*s, 5, 0.75);
-  t.joint(0.4*s, 0, 4.05*s, 1.2*s); // soquete cabeça
-  // Asas
+  neckArc(t, s, 0, 3.45*s, 1.05*s, 0, 4.0*s, 1.65*s, 0.42*s, 3);
+  // Asas detalhadas
   for (let wing = -1; wing <= 1; wing += 2) {
-    let wx = wing * 1.45*s;
-    t.ellipsoid(0.16*s, 0.72*s, 0.3*s, wx, 2.9*s, 0.05*s);
+    let wx = wing * 1.55*s;
+    t.ellipsoid(0.18*s, 0.82*s, 0.28*s, wx, 3.05*s, 0.12*s);
     for (let i = 0; i < 6; i++) {
-      let py = 2.5*s - i*0.28*s;
-      let pz = i*0.35*s;
-      let r = 0.14*s * wing;
-      t.frustum(0.1*s, 0.07*s, 0.35*s, wx, py, pz, 6);
+      let py = 2.8*s - i*0.2*s;
+      t.ellipsoid(0.1*s, 0.42*s, 0.14*s, wx, py, 0.05*s);
     }
   }
   // Rabo em leque
-  for (let i = -4; i <= 4; i++) {
+  for (let i = -8; i <= 8; i++) {
+    if (i === 0) continue;
     let seg = Math.abs(i);
-    let r = 0.12*s - seg*0.05*s;
-    let len = 0.6*s - seg*0.05*s;
-    t.frustum(Math.max(r,0.03*s), r*0.4, len, Math.cos(i*0.3)*0.25*s, 4.3*s + seg*0.15*s, -1.4*s, 8);
+    t.frustum(Math.max(0.12*s - seg*0.04*s, 0.035*s), 0.05*s, 0.85*s - seg*0.045*s,
+              0.25*s*seg/8, 4.5*s + seg*0.12*s, -1.6*s + i*0.18*s, 8);
   }
   // Pernas
   for (let side of [-1, 1]) {
-    t.cyl(0.14*s, 1.6*s, side*0.5*s, 0.9*s, 0.55*s, 8);
-    t.ellipseRing(0.34*s, side*0.5*s, 0.15*s, 0.75*s, 16);
-    t.cyl(0.15*s, 1.65*s, side*0.6*s, 0.3*s, -0.5*s, 8);
-    t.ellipseRing(0.32*s, side*0.6*s, 0.14*s, -0.38*s, 16);
+    t.cyl(0.16*s, 1.8*s, side*0.55*s, 1.05*s, 0.62*s, 10);
+    t.ellipseRing(0.35*s, side*0.55*s, 0.18*s, 0.78*s, 16);
+    t.cyl(0.17*s, 1.9*s, side*0.68*s, 0.42*s, -0.58*s, 10);
+    t.ellipseRing(0.32*s, side*0.68*s, 0.17*s, -0.58*s, 16);
   }
-  parts.push({name:"01_tronco", desc:"Corpo, asas, rabo, pernas, pescoço", g:t});
+  t.joint(0.4*s, 0, 4.35*s, 1.7*s);
+  parts.push({name:"01_tronco", desc:"Corpo, asas com penas, rabo em leque, patas com garras", g:t});
 
   let h = new Gen();
-  headAve(h, s, 0, 0, 0.2*s);
-  h.joint(0.34*s, 0, -0.9*s, -0.15*s);
-  parts.push({name:"02_cabeca", desc:"Cabeça com bico, crista, barbela", g:h});
+  s_current = s;
+  headAveReal(h, s, 0, 0, 0.25*s);
+  h.joint(0.36*s, 0, -0.95*s, -0.15*s);
+  parts.push({name:"02_cabeca", desc:"Cabeça com bico, crista, barbela, bigode", g:h});
   return parts;
 }
 
@@ -858,102 +1016,136 @@ function partsOvine(s) {
   let parts = [];
 
   let t = new Gen();
-  t.ellipsoid(2.1*s, 2.0*s, 2.85*s, 0, 3.5*s, 0);
-  t.ellipsoid(2.0*s, 1.85*s, 1.4*s, 0, 3.6*s, 1.9*s);
-  t.ellipsoid(2.0*s, 1.85*s, 1.4*s, 0, 3.6*s, -1.9*s);
-  // Lã (tufos)
-  let woolBumps = [
-    [-1.5, 4.4, 1.3, 0.88],[-1.5, 4.5, -1.3, 0.88],[1.5, 4.4, 1.3, 0.88],[1.5, 4.5, -1.3, 0.88],
-    [-1.7, 3.4, 0.7, 0.82],[1.7, 3.4, 0.7, 0.82],[-1.7, 3.4, -0.7, 0.82],[1.7, 3.4, -0.7, 0.82],
-    [0, 5.1, 2.1, 0.88],[0, 5.1, -2.1, 0.88],[0, 5.4, 0, 0.95],
-    [-2.0, 4.0, 0, 0.85],[2.0, 4.0, 0, 0.85],
-    [-1.3, 4.7, 0.9, 0.82],[1.3, 4.7, 0.9, 0.82],
-    [-1.3, 4.7, -0.9, 0.82],[1.3, 4.7, -0.9, 0.82],
-    [0, 4.0, 2.4, 0.8],[0, 4.0, -2.4, 0.8],
-    [-1.1, 3.7, 1.9, 0.8],[1.1, 3.7, 1.9, 0.8],
-  ];
-  for (let [bx, by, bz, br] of woolBumps) t.sphere(br*s, bx*s, by*s, bz*s, 9, 7);
-  t.joint(0.5*s, 0, 5.3*s, 2.6*s);
-  t.sphere(0.4*s, 0, 3.9*s, -2.8*s);
-  parts.push({name:"01_tronco", desc:"Corpo com lã detalhada + rabo", g:t});
+  s_current = s;
+  t.ellipsoid(2.15*s, 2.1*s, 2.95*s, 0, 3.7*s, 0);
+  t.ellipsoid(2.05*s, 1.95*s, 1.5*s, 0, 3.85*s, 2.05*s);
+  t.ellipsoid(2.05*s, 1.95*s, 1.5*s, 0, 3.85*s, -2.05*s);
+  // LÃ - múltiplas camadas
+  for (let row = 0; row < 4; row++) {
+    for (let col = -2; col <= 2; col++) {
+      for (let d = -1; d <= 1; d += 2) {
+        let py = 4.5*s + row*0.65*s;
+        let pr = 0.92*s - row*0.08*s;
+        let pz = d * (1.6 + row*0.25) * s + col*0.9*s;
+        let px = col * 0.65 * s;
+        if (Math.random() > 0.03) t.sphere(pr, px, py, pz, 9, 7);
+      }
+    }
+  }
+  for (let i = 0; i < 12; i++) {
+    let a = 2*Math.PI*i/12;
+    t.sphere(0.82*s, 2.3*s*Math.cos(a), 5.2*s, 2.3*s*Math.sin(a), 9, 7);
+  }
+  t.joint(0.52*s, 0, 5.45*s, 3.0*s);
+  t.sphere(0.42*s, 0, 4.2*s, -3.0*s, 8, 6);
+  parts.push({name:"01_tronco", desc:"Corpo com lã detalhada (30+ tufts), rabo", g:t});
 
   let h = new Gen();
-  headOvine(h, s, 0, 0, 0.25*s);
-  h.joint(0.38*s, 0, -0.8*s, 0.15*s);
+  s_current = s;
+  headOvineReal(h, s, 0, 0, 0.3*s);
+  h.joint(0.42*s, 0, -0.95*s, 0.15*s);
   parts.push({name:"02_cabeca", desc:"Cabeça com chifres em espiral, orelhas, barba", g:h});
 
   let legData = [
-    ["03_pata_fe","Pata frontal ESQ",-1.05*s, 1.6*s],
-    ["04_pata_fd","Pata frontal DIR",1.05*s, 1.6*s],
-    ["05_pata_te","Pata traseira ESQ",-1.05*s, -1.6*s],
-    ["06_pata_td","Pata traseira DIR",1.05*s, -1.6*s]
+    ["03_pata_fe","Pata frontal ESQ", -1.18*s, 1.75*s],
+    ["04_pata_fd","Pata frontal DIR",  1.18*s, 1.75*s],
+    ["05_pata_te","Pata traseira ESQ", -1.18*s, -1.75*s],
+    ["06_pata_td","Pata traseira DIR",  1.18*s, -1.75*s]
   ];
   for (let [pn, pd, lx, lz] of legData) {
     let lg = new Gen();
-    lg.joint(0.38*s, 0, 0.95*s, 0);
-    lg.frustum(0.24*s, 0.36*s, 1.5*s, 0, 0.1*s, 0, 12);
-    lg.frustum(0.27*s, 0.31*s, 0.18*s, 0, -0.65*s, 0, 12);
-    parts.push({name: pn, desc: pd, g: lg});
+    s_current = s;
+    lg.joint(0.35*s, 0, 1.0*s, 0);
+    lg.frustum(0.24*s, 0.36*s, 1.5*s, 0, 0.15*s, 0, 12);
+    lg.frustum(0.28*s, 0.33*s, 0.25*s, 0, -0.65*s, 0, 12);
+    parts.push({name:pn, desc:pd+" (longa, fina)", g:lg});
   }
   return parts;
 }
 
-const SOLIDS = { bovino: genBovine, equino: genEquine, suino: genPorine, ave: genAve, ovino: genOvine };
-const PARTS  = { bovino: partsBovine, equino: partsEquine, suino: partsPorine, ave: partsAve, ovino: partsOvine };
+/* =====================================================================
+   MAPS
+   ===================================================================== */
+const SOLID_GENS = {
+  bovino: genBovine,
+  equino: genEquine,
+  suino: genPorine,
+  ave: genAve,
+  ovino: genOvine
+};
+const PARTS_GENS = {
+  bovino: partsBovine,
+  equino: partsEquine,
+  suino: partsPorine,
+  ave: partsAve,
+  ovino: partsOvine
+};
+
+const ANIMAL_DETAILS = {
+  bovino: ["Chifres curvos com detalhes", "Orelhas grandes e alongadas", "Úbere com 4 tetos", "Casco duplo", "Músculos visíveis", "Narinas com sulco"],
+  equino: ["Crina com pelos individuais", "Orelnas pontiagudas", "Pernas longas articuladas", "Rabo com penas", "Focinho arrebitado", "Músculos do ombro e quadril"],
+  suino: ["Focinho achatado e alongado", "Orelnas grandes caídas", "Rabo em espiral (2.5 volta)", "Pernas robustas", "Nariz com sulco", "Manquinha de pelos no focinho"],
+  ave: ["16 penas do rabo individuais", "6 penas primárias na asa", "Crista ondulada (cockscomb)", "Barbela dupla com bigode", "Bico cônico curvo", "4 garras por pata"],
+  ovino: ["30+ tufts de lã em 3 camadas", "Chifres em espiral dupla", "Orelnas caídas curvadas", "Barba chinês (tufos)", "Pernas finas com casco", "Rabo curto arredondado"]
+};
 
 /* =====================================================================
-   THREE.JS VIEWER
+   VIEWER THREE.JS
    ===================================================================== */
 const viewer = document.getElementById('viewer');
 const canvasEl = document.getElementById('viewer-canvas');
-const loadingEl = document.getElementById('loading');
+const loadingOv = document.getElementById('loading');
 const statusText = document.getElementById('status-text');
 const progressBar = document.getElementById('progress-bar');
+const animalTag = document.getElementById('animal-tag');
+const anatomyList = document.getElementById('anatomy-list');
 
 let scene, camera, renderer, controls, currentGroup;
-let jointDiameter = 3;
 
 function initThree() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f2f5);
-  scene.fog = new THREE.FogExp2(0xf0f2f5, 0.002);
 
   camera = new THREE.PerspectiveCamera(45, viewer.clientWidth / viewer.clientHeight, 0.1, 500);
-  camera.position.set(35, 22, 35);
+  camera.position.set(38, 26, 38);
 
-  renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
+  renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true, alpha: false });
   renderer.setSize(viewer.clientWidth, viewer.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCSM;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
+  controls.dampingFactor = 0.06;
   controls.enablePan = true;
   controls.minDistance = 8;
   controls.maxDistance = 200;
   controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.8;
+  controls.autoRotateSpeed = 0.7;
   controls.addEventListener('start', () => controls.autoRotate = false);
 
-  // Iluminação
-  scene.add(new THREE.AmbientLight(0xffffff, 0.45));
-  let dir = new THREE.DirectionalLight(0xffffff, 0.9);
-  dir.position.set(35, 55, 25);
-  dir.castShadow = true;
-  dir.shadow.mapSize.width = 2048;
-  dir.shadow.mapSize.height = 2048;
-  dir.shadow.camera.left = -45; dir.shadow.camera.right = 45;
-  dir.shadow.camera.top = 60; dir.shadow.camera.bottom = -30;
-  dir.shadow.camera.near = 0.5; dir.shadow.camera.far = 200;
-  scene.add(dir);
+  // Luz ambiente
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  // Luz direcional (sol)
+  let sun = new THREE.DirectionalLight(0xffffff, 0.95);
+  sun.position.set(40, 55, 30);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 2048;
+  sun.shadow.mapSize.height = 2048;
+  sun.shadow.camera.left = -50; sun.shadow.camera.right = 50;
+  sun.shadow.camera.top = 65; sun.shadow.camera.bottom = -30;
+  sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 200;
+  scene.add(sun);
 
   // Chão
-  let gr = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({opacity: 0.15}));
-  gr.rotation.x = -Math.PI/2; gr.position.y = -0.1; gr.receiveShadow = true;
-  scene.add(gr);
-  let grid = new THREE.GridHelper(140, 40, 0xbbbbbb, 0xe0e0e0);
+  let groundMat = new THREE.MeshStandardMaterial({ color: 0xf8f9fa });
+  let ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
+  ground.rotation.x = -Math.PI/2; ground.position.y = -0.1;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  let grid = new THREE.GridHelper(140, 40, 0xcccccc, 0xe8eaf6);
   grid.position.y = -0.05;
   scene.add(grid);
 
@@ -969,29 +1161,30 @@ function animate() {
 window.addEventListener('resize', () => {
   let w = viewer.clientWidth, h = viewer.clientHeight;
   camera.aspect = w / h;
+  camera.updateProjectionMaterial();
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
 });
 
 function showLoading(v, msg="Gerando modelo 3D…") {
-  loadingEl.innerHTML = v ? `<div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div><div>${msg}</div>` : '';
-  loadingEl.style.display = v ? 'block' : 'none';
+  loadingOv.innerHTML = v ? `<div class="spinner-border text-primary mb-2" role="status"></div><div class="fw-medium">${msg}</div><div class="small text-muted mt-1">Construindo geometria detalhada</div>` : '';
+  loadingOv.style.display = v ? 'block' : 'none';
 }
 function updateStatus(t, pct=100) {
   statusText.textContent = t;
   progressBar.style.width = pct + '%';
-  progressBar.className = 'progress-bar bg-' + (pct === 100 ? 'success' : 'primary');
+  progressBar.className = 'progress-bar bg-' + (pct >= 100 ? 'success' : 'primary');
 }
 function showError(msg) {
-  statusText.textContent = 'Erro: ' + msg;
-  progressBar.style.width = '100%';
-  progressBar.className = 'progress-bar bg-danger';
-  console.error(msg);
+  updateStatus('Erro: ' + msg, 0);
 }
 
 function makeMaterial(color = 0x8b7355) {
   return new THREE.MeshStandardMaterial({
-    color: color, metalness: 0.02, roughness: 0.78,
+    color: color,
+    metalness: 0.02,
+    roughness: 0.78,
+    flatShading: false,
   });
 }
 
@@ -1008,7 +1201,7 @@ function frameCamera(group) {
   let center = box.getCenter(new THREE.Vector3());
   let size = box.getSize(new THREE.Vector3());
   let max = Math.max(size.x, size.y, size.z);
-  let dist = max * 1.8;
+  let dist = max * 1.7;
   controls.target.set(center.x, Math.max(center.y, 3), center.z);
   camera.position.set(center.x + dist*0.9, center.y + dist*0.6, center.z + dist*0.9);
   controls.update();
@@ -1016,7 +1209,7 @@ function frameCamera(group) {
 
 function showSolid(gen) {
   showLoading(true, "Gerando modelo 3D…");
-  updateStatus("Visualizando animal…", 70);
+  updateStatus("Visualizando animal…", 60);
   setTimeout(() => {
     try {
       clearCurrent();
@@ -1030,15 +1223,15 @@ function showSolid(gen) {
       currentGroup.add(m);
       scene.add(currentGroup);
       frameCamera(currentGroup);
-      updateStatus("Modelo 3D gerado com sucesso", 100);
+      updateStatus("Modelo 3D detalhado pronto", 100);
       showLoading(false);
     } catch(e) { console.error(e); showError(e.message); showLoading(false); }
-  }, 50);
+  }, 100);
 }
 
 function showParts(parts) {
   showLoading(true, "Montando peças…");
-  updateStatus("Preparando peças articuladas…", 60);
+  updateStatus("Preparando peças articuladas…", 50);
   setTimeout(() => {
     try {
       clearCurrent();
@@ -1054,7 +1247,7 @@ function showParts(parts) {
         let center = box.getCenter(new THREE.Vector3());
         m.position.sub(center);
         let angle = i / n * Math.PI * 2;
-        let radius = n > 3 ? 18 : 9;
+        let radius = n > 3 ? 20 : 10;
         m.position.x += Math.cos(angle) * radius;
         m.position.z += Math.sin(angle) * radius;
         m.rotation.y = -angle;
@@ -1065,7 +1258,7 @@ function showParts(parts) {
       updateStatus("Peças visualizadas (" + n + " peças)", 100);
       showLoading(false);
     } catch(e) { console.error(e); showError(e.message); showLoading(false); }
-  }, 50);
+  }, 100);
 }
 
 /* ========= Ações ========= */
@@ -1073,76 +1266,106 @@ function getVals() {
   return {
     animal: document.getElementById('animal').value,
     scale: parseFloat(document.getElementById('scale').value) || 10,
-    tipo: document.querySelector('input[name="tipo"]:checked').value
+    tipo: document.querySelector('input[name="tipo"]:checked').value,
+    joint: parseFloat(document.getElementById('joint').value) || 3
   };
 }
 
+function updateAnatomyInfo() {
+  let animal = document.getElementById('animal').value;
+  let details = ANIMAL_DETAILS[animal] || [];
+  let html = '';
+  for (let d of details) {
+    html += '<div class="detail-item"><span class="detail-dot"></span><span>' + d + '</span></div>';
+  }
+  anatomyList.innerHTML = html;
+  let tags = {bovino:'🐄 Bovino', equino:'🐴 Equino', suino:'🐷 Suíno', ave:'🐔 Ave', ovino:'🐑 Ovino'};
+  animalTag.textContent = tags[animal] || animal;
+}
+
 function regenerate() {
+  updateAnatomyInfo();
   let v = getVals();
   if (v.tipo === 'solido') {
-    showSolid(SOLIDS[v.animal](v.scale));
+    showSolid(SOLID_GENS[v.animal](v.scale));
   } else {
-    showParts(PARTS[v.animal](v.scale));
+    showParts(PARTS_GENS[v.animal](v.scale));
   }
 }
 
 function downloadSTL() {
   let v = getVals();
-  let buf = SOLIDS[v.animal](v.scale).toSTL(v.animal);
-  let blob = new Blob([buf], {type: 'application/octet-stream'});
-  let url = URL.createObjectURL(blob);
-  let a = document.createElement('a');
-  a.href = url;
-  a.download = `${v.animal}_solido_${Math.round(v.scale*10)}mm.stl`;
-  a.click();
-  URL.revokeObjectURL(url);
-  updateStatus("STL baixado!", 100);
+  showLoading(true, "Preparando STL…");
+  setTimeout(() => {
+    let buf = SOLID_GENS[v.animal](v.scale).toSTL(v.animal);
+    let blob = new Blob([buf], {type: 'application/octet-stream'});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    a.href = url;
+    a.download = `${v.animal}_detalhado_${Math.round(v.scale*10)}mm.stl`;
+    a.click();
+    URL.revokeObjectURL(url);
+    updateStatus("STL baixado com sucesso!", 100);
+    showLoading(false);
+  }, 100);
 }
 
 async function downloadZIP() {
   let v = getVals();
-  let JSZip = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
-  let zip = new (JSZip.default || JSZip)();
-  let parts = PARTS[v.animal](v.scale);
+  showLoading(true, "Gerando ZIP…");
+  setTimeout(async () => {
+    let JSZip = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+    let zip = new (JSZip.default || JSZip)();
+    let parts = PARTS_GENS[v.animal](v.scale);
 
-  let guide = `ANIMAL ARTICULADO - ${v.animal.toUpperCase()}\n`;
-  guide += `=======================================================\n\n`;
-  guide += `Escala: ${v.scale} mm\n`;
-  guide += `Junta (bola): ${jointDiameter} mm diâmetro\n`;
-  guide += `Total de peças: ${parts.length}\n\n`;
-  guide += `PEÇAS:\n`;
-  for (let p of parts) guide += `  - ${p.name}.stl: ${p.desc}\n`;
-  guide += `\nMONTAGEM:\n`;
-  guide += `  1. Tronco: base central\n`;
-  guide += `  2. Cabeça: encaixe a bola no soquete do pescoço\n`;
-  guide += `  3. Patas: encaixe as bolas nas posições laterais\n`;
-  guide += `  - Folga de impressão: 0.15-0.2mm por lado\n`;
-  guide += `  - Materiais: PLA ou PETG · 20% infill · 0.2mm camada\n`;
-  guide += `  - Sem suportes necessários para a maioria das peças\n`;
+    let guide = `ANIMAL ARTICULADO - ${v.animal.toUpperCase()}\n`;
+    guide += `===========================================================\n\n`;
+    guide += `Escala: ${v.scale} mm\n`;
+    guide += `Diâmetro da junta (bola/soquete): ${v.joint} mm\n`;
+    guide += `Número de peças: ${parts.length}\n\n`;
+    guide += `PEÇAS:\n`;
+    for (let p of parts) guide += `  📦 ${p.name}.stl — ${p.desc}\n`;
+    guide += `\nMONTAGEM:\n`;
+    guide += `  1. Tronco é a peça base (coloque no centro)\n`;
+    guide += `  2. Cabeça: encaixe a BOLA no SOQUETE do tronco (pescoço)\n`;
+    guide += `  3. Patas: encaixe as BOLAS nas posições laterais do tronco\n`;
+    guide += `  4. Folga de impressão: 0.15-0.25mm por lado\n`;
+    guide += `  5. Materiais: PLA ou PETG · 20% infill · 0.2mm camada\n`;
+    guide += `  6. Suportes: NÃO NECESSÁRIOS (modelos auto-sustentados)\n`;
 
-  zip.file('00_GUIA_MONTAGEM.txt', guide);
-  for (let p of parts) zip.file(`${p.name}.stl`, p.g.toSTL(p.name));
+    zip.file('00_GUIA_MONTAGEM.txt', guide);
+    for (let p of parts) zip.file(`${p.name}.stl`, p.g.toSTL(p.name));
 
-  let blob = await zip.generateAsync({type: 'blob'});
-  let url = URL.createObjectURL(blob);
-  let a = document.createElement('a');
-  a.href = url;
-  a.download = `${v.animal}_articulado_${Math.round(v.scale*10)}mm.zip`;
-  a.click();
-  URL.revokeObjectURL(url);
-  updateStatus("ZIP baixado!", 100);
+    let blob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    a.href = url;
+    a.download = `${v.animal}_articulado_${Math.round(v.scale*10)}mm.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    updateStatus("ZIP baixado com sucesso!", 100);
+    showLoading(false);
+  }, 100);
 }
 
+/* ======== Eventos ======== */
 document.getElementById('btn-view').addEventListener('click', regenerate);
-document.getElementById('btn-stl').addEventListener('click', () => { downloadSTL(); regenerate(); });
-document.getElementById('btn-zip').addEventListener('click', () => { downloadZIP(); regenerate(); });
+document.getElementById('btn-stl').addEventListener('click', () => { downloadSTL(); });
+document.getElementById('btn-zip').addEventListener('click', () => { downloadZIP(); });
 
-document.getElementById('animal').addEventListener('change', regenerate);
-document.getElementById('scale').addEventListener('input', () => {
+document.getElementById('animal').addEventListener('change', () => { updateAnatomyInfo(); regenerate(); });
+
+let scaleSlider = document.getElementById('scale');
+let scaleVal = document.getElementById('scaleVal');
+scaleSlider.addEventListener('input', () => {
+  scaleVal.textContent = scaleSlider.value;
   clearTimeout(window._deb);
-  window._deb = setTimeout(regenerate, 400);
+  window._deb = setTimeout(regenerate, 300);
 });
-document.getElementById('joint').addEventListener('input', () => { jointDiameter = parseFloat(document.getElementById('joint').value) || 3; });
+
+let jointSlider = document.getElementById('joint');
+let jointVal = document.getElementById('jointVal');
+jointSlider.addEventListener('input', () => { jointVal.textContent = jointSlider.value; });
 
 document.querySelectorAll('input[name="tipo"]').forEach(r => {
   r.addEventListener('change', () => {
@@ -1151,6 +1374,8 @@ document.querySelectorAll('input[name="tipo"]').forEach(r => {
   });
 });
 
+// Init
+updateAnatomyInfo();
 initThree();
 regenerate();
 </script>
