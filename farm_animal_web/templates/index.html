@@ -7,97 +7,389 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
   body { background: #f6f9fc; }
-  .container { max-width: 700px; margin-top: 3rem; }
-  .card { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .container-fluid { max-width: 1400px; }
+  .card { box-shadow: 0 2px 8px rgba(0,0,0,.08); border: none; }
   .form-label { font-weight: 500; }
+  #viewer-container {
+    width: 100%; height: 500px; background: #e8ebf0;
+    border-radius: 8px; position: relative; overflow: hidden;
+  }
+  #viewer-canvas { display: block; width: 100%; height: 100%; }
+  .viewer-loading { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#666; }
+  .info-panel { font-size: 0.85rem; color: #666; }
   .species-icon { font-size: 1.2rem; margin-right: 0.5rem; }
+  @media (max-width: 991px) {
+    #viewer-container { height: 400px; }
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="card">
-    <div class="card-body p-4">
-      <h1 class="h3 mb-3 text-center">🦙 Gerador de Animais de Fazenda 3D</h1>
-      <p class="text-muted text-center mb-4">Gera modelos STL prontos para impressão 3D (sólidos ou articulados).</p>
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <!-- Painel lateral: Controles -->
+    <div class="col-12 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h1 class="h5 mb-3">🦙 Gerador de Animais 3D</h1>
+          <p class="text-muted small mb-4">Ajuste os parâmetros e veja o modelo atualizar em tempo real.</p>
 
-      {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-          <div class="mb-3">
-            {% for category, msg in messages %}
-              <div class="alert alert-{{ 'danger' if category == 'danger' else 'warning' }} alert-dismissible fade show">
-                {{ msg }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+              <div class="mb-3">
+                {% for category, msg in messages %}
+                  <div class="alert alert-{{ 'danger' if category == 'danger' else 'warning' }} alert-dismissible fade show py-1 px-2" style="font-size:.8rem;">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size:.6rem;"></button>
+                  </div>
+                {% endfor %}
               </div>
-            {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form id="params-form" novalidate>
+            <fieldset class="mb-3">
+              <legend class="form-label small">🐄 Espécie</legend>
+              <select name="animal" id="animal-select" class="form-select form-select-sm" required>
+                {% for key in especies %}
+                <option value="{{ key }}" {% if key == 'bovino' %}selected{% endif %}>
+                  {% if key == 'bovino' %}🐄{% elif key == 'equino' %}🐴{% elif key == 'suino' %}🐷{% elif key == 'ave' %}🐔{% else %}🐑{% endif %}
+                  {{ key.capitalize() }}
+                </option>
+                {% endfor %}
+              </select>
+            </fieldset>
+
+            <fieldset class="mb-3">
+              <legend class="form-label small">📐 Escala (mm)</legend>
+              <div class="input-group input-group-sm">
+                <input type="number" name="scale" id="scale-input" step="0.5" class="form-control" value="{{ default_scale }}" min="5" max="30">
+                <span class="input-group-text">mm</span>
+              </div>
+              <div class="form-text">Escala 10 ≈ 10×5×7 cm (cabe na mão).</div>
+            </fieldset>
+
+            <fieldset class="mb-3">
+              <legend class="form-label small">🛠️ Tipo de modelo</legend>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="tipo" id="tipo-solido" value="solido" checked>
+                <label class="form-check-label small" for="tipo-solido">Sólido</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="tipo" id="tipo-articulado" value="articulado">
+                <label class="form-check-label small" for="tipo-articulado">Articulado</label>
+              </div>
+            </fieldset>
+
+            <fieldset class="mb-3" id="joint-field" style="display:none;">
+              <legend class="form-label small">🔩 Diâmetro das juntas (mm)</legend>
+              <input type="number" name="joint" id="joint-input" step="0.5" class="form-control form-control-sm" value="{{ default_joint }}" min="1" max="10">
+            </fieldset>
+
+            <div class="d-grid gap-2">
+              <button type="button" id="btn-download" class="btn btn-success btn-sm">
+                📦 Gerar e Baixar ZIP
+              </button>
+              <button type="button" id="btn-regenerate" class="btn btn-outline-primary btn-sm">
+                🔄 Atualizar Visualização
+              </button>
+            </div>
+
+            <hr class="my-3">
+            <div class="info-panel">
+              <strong>Dicas:</strong>
+              <ul class="mb-0 ps-3 small">
+                <li>Arraste para rotacionar • Scroll para zoom • Botão direito para pan</li>
+                <li>Modelo sólido = 1 peça | Articulado = peças com juntas móveis</li>
+                <li>PLA/PETG • 15–20% fill (sólido) / 30% (articulado) • 0.2 mm layer</li>
+              </ul>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel principal: Visualizador 3D -->
+    <div class="col-12 col-lg-8">
+      <div class="card h-100">
+        <div class="card-body p-0">
+          <div id="viewer-container">
+            <canvas id="viewer-canvas"></canvas>
+            <div class="viewer-loading" id="loading-msg">
+              <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+              Gerando modelo...
+            </div>
+            <div class="viewer-loading d-none" id="error-msg" style="color:#dc3545;"></div>
           </div>
-        {% endif %}
-      {% endwith %}
-
-      <form method="post" novalidate>
-        <fieldset class="mb-4">
-          <legend class="form-label">🐄 Espécie</legend>
-          <select name="animal" class="form-select" required>
-            {% for key in especies %}
-            <option value="{{ key }}">
-              {% if key == 'bovino' %}🐄{% elif key == 'equino' %}🐴{% elif key == 'suino' %}🐷{% elif key == 'ave' %}🐔{% else %}🐑{% endif %}
-              {{ key.capitalize() }}
-            </option>
-            {% endfor %}
-          </select>
-        </fieldset>
-
-        <fieldset class="mb-4">
-          <legend class="form-label">📐 Escala aproximada (mm)</legend>
-          <div class="input-group">
-            <input type="number" name="scale" step="0.1" class="form-control" placeholder="{{ default_scale }}" min="5" max="30">
-            <span class="input-group-text">mm</span>
-          </div>
-          <div class="form-text">Valor sugerido: <strong>10</strong> → modelo ≈ 10×5×7 cm (cabe na mão). Aumente para modelos maiores.</div>
-        </fieldset>
-
-        <fieldset class="mb-4">
-          <legend class="form-label">🛠️ Tipo de modelo</legend>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="tipo" id="tipo-solido" value="solido" checked>
-            <label class="form-check-label" for="tipo-solido">
-              <strong>Sólido</strong> — Uma única peça, sem montagem.
-            </label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="tipo" id="tipo-articulado" value="articulado">
-            <label class="form-check-label" for="tipo-articulado">
-              <strong>Articulado</strong> — Várias peças com juntas móveis (bola-soquete / pino).
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset class="mb-4" id="joint-field" style="display:none;">
-          <legend class="form-label">🔩 Diâmetro das juntas (mm)</legend>
-          <input type="number" name="joint" step="0.1" class="form-control" placeholder="{{ default_joint }}" min="1" max="10">
-          <div class="form-text">Tamanho dos pinos/bolas que conectam as peças. Padrão: 3 mm.</div>
-        </fieldset>
-
-        <button type="submit" class="btn btn-success w-100 btn-lg">
-          📦 Gerar STL e Baixar ZIP
-        </button>
-      </form>
-
-      <hr class="my-4">
-      <div class="text-center text-muted small">
-        Dicas de impressão: PLA/PETG · Preenchimento 15–20% (sólido) / 30% (articulado) · Camada 0.2 mm · Sem suportes necessários.
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  document.querySelectorAll('input[name="tipo"]').forEach(r => {
-    r.addEventListener('change', () => {
-      document.getElementById('joint-field').style.display =
-        (r.value === 'articulado' && r.checked) ? 'block' : 'none';
-    });
-  });
+<!-- Three.js + STL Loader -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
 </script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+// ========== Estado ==========
+let scene, camera, renderer, controls, currentModel;
+const container = document.getElementById('viewer-container');
+const canvas = document.getElementById('viewer-canvas');
+const loadingMsg = document.getElementById('loading-msg');
+const errorMsg = document.getElementById('error-msg');
+
+// ========== Inicialização Three.js ==========
+function initThree() {
+  // Scene
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xeeeef0);
+
+  // Camera
+  const aspect = container.clientWidth / container.clientHeight;
+  camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+  camera.position.set(30, 20, 30);
+
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Controls
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.enablePan = true;
+  controls.minDistance = 5;
+  controls.maxDistance = 200;
+  controls.target.set(0, 10, 0);
+
+  // Lights
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1.2);
+  hemi.position.set(0, 50, 0);
+  scene.add(hemi);
+
+  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(30, 50, 20);
+  dir.castShadow = true;
+  dir.shadow.mapSize.width = 2048;
+  dir.shadow.mapSize.height = 2048;
+  dir.shadow.camera.near = 1;
+  dir.shadow.camera.far = 150;
+  dir.shadow.camera.left = -50;
+  dir.shadow.camera.right = 50;
+  dir.shadow.camera.top = 50;
+  dir.shadow.camera.bottom = -50;
+  scene.add(dir);
+
+  // Ground plane (shadow catcher)
+  const groundGeo = new THREE.PlaneGeometry(200, 200);
+  const groundMat = new THREE.ShadowMaterial({ opacity: 0.15 });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.5;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Grid helper
+  const grid = new THREE.GridHelper(100, 50, 0xcccccc, 0xeeeeee);
+  grid.position.y = -0.5;
+  scene.add(grid);
+
+  // Animation loop
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+
+// ========== Carregar STL ==========
+const loader = new STLLoader();
+
+async function loadSTL(url) {
+  showLoading(true);
+  hideError();
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const geometry = loader.parse(arrayBuffer);
+
+    // Centralizar e normalizar
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    geometry.translate(-center.x, -center.y, -center.z);
+
+    // Material
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8b7355,    // cor "madeira/argila"
+      metalness: 0.0,
+      roughness: 0.85,
+      flatShading: true
+    });
+
+    // Remover modelo anterior
+    if (currentModel) {
+      currentModel.geometry.dispose();
+      currentModel.material.dispose();
+      scene.remove(currentModel);
+    }
+
+    currentModel = new THREE.Mesh(geometry, material);
+    currentModel.castShadow = true;
+    currentModel.receiveShadow = true;
+    scene.add(currentModel);
+
+    // Ajustar câmera ao modelo
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const dist = maxDim * 2.5;
+    controls.target.set(0, size.y / 2, 0);
+    camera.position.set(dist, dist * 0.7, dist);
+    controls.update();
+
+    showLoading(false);
+  } catch (err) {
+    console.error(err);
+    showError('Erro ao carregar modelo: ' + err.message);
+    showLoading(false);
+  }
+}
+
+function showLoading(show) { loadingMsg.classList.toggle('d-none', !show); }
+function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.remove('d-none'); }
+function hideError() { errorMsg.classList.add('d-none'); }
+
+// ========== Gerar modelo via API ==========
+async function generateModel(download = false) {
+  const form = document.getElementById('params-form');
+  const data = new FormData(form);
+  const params = Object.fromEntries(data.entries());
+
+  // Converter para números
+  params.scale = parseFloat(params.scale);
+  if (params.joint) params.joint = parseFloat(params.joint);
+
+  try {
+    showLoading(true);
+    hideError();
+
+    const response = await fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(params).toString()
+    });
+
+    if (response.status === 302) {
+      const location = response.headers.get('Location');
+      if (location && location.startsWith('/download/')) {
+        const token = location.split('/download/')[1];
+        const zipUrl = `/download/${token}`;
+
+        if (download) {
+          // Baixar ZIP
+          const a = document.createElement('a');
+          a.href = zipUrl;
+          a.download = '';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          showLoading(false);
+          return;
+        } else {
+          // Para visualização: extrair primeiro STL do ZIP
+          const zipResp = await fetch(zipUrl);
+          const zipBlob = await zipResp.blob();
+          const zip = await JSZip.loadAsync(zipBlob);
+          
+          // Encontrar primeiro .stl
+          let stlName = null;
+          for (const name of Object.keys(zip.files)) {
+            if (name.toLowerCase().endsWith('.stl')) {
+              stlName = name;
+              break;
+            }
+          }
+          
+          if (!stlName) throw new Error('Nenhum STL encontrado no ZIP');
+          
+          const stlBlob = await zip.files[stlName].async('blob');
+          const stlUrl = URL.createObjectURL(stlBlob);
+          await loadSTL(stlUrl);
+        }
+      } else {
+        throw new Error('Resposta inesperada do servidor');
+      }
+    } else {
+      const text = await response.text();
+      throw new Error('Erro: ' + text.substring(0, 200));
+    }
+  } catch (err) {
+    console.error(err);
+    showError(err.message);
+    showLoading(false);
+  }
+}
+
+// ========== Eventos ==========
+document.getElementById('btn-regenerate').addEventListener('click', () => generateModel(false));
+document.getElementById('btn-download').addEventListener('click', () => generateModel(true));
+
+// Auto-regenerar ao mudar parâmetros (com debounce)
+let debounceTimer;
+['animal', 'scale', 'tipo', 'joint'].forEach(id => {
+  const el = document.getElementById(id + (id === 'tipo' ? '' : '-input') || id + '-select');
+  if (el) el.addEventListener('change', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => generateModel(false), 500);
+  });
+});
+
+// Mostrar/ocultar campo junta
+document.querySelectorAll('input[name="tipo"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('joint-field').style.display =
+      (r.value === 'articulado' && r.checked) ? 'block' : 'none';
+  });
+});
+
+// Carregar modelo inicial
+initThree();
+generateModel(false);
+
+// ========== Carregar JSZip dinamicamente ==========
+async function loadJSZip() {
+  if (window.JSZip) return;
+  await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+}
+loadJSZip();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
