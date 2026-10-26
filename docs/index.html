@@ -566,7 +566,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(w, h);
 });
 
-function showLoading(v) {
+function showLoading(v, msg="Gerando modelo 3D...") {
+  loadingOv.innerHTML = v ? '<div class="spinner-border text-primary mb-2" role="status"></div><div class="fw-bold">' + msg + '</div><div class="small text-muted mt-1">Construindo geometria detalhada</div>' : '';
   loadingOv.style.display = v ? 'block' : 'none';
 }
 
@@ -627,10 +628,12 @@ function displaySolid(gen) {
 let importedModels = [];
 
 function importSTL(file) {
-  showLoading(true);
+  console.log('Starting importSTL for:', file.name);
+  showLoading(true, 'Carregando ' + file.name + '...');
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
+      console.log('File loaded successfully');
       const loader = new STLLoader();
       const geometry = loader.parse(e.target.result);
       const mesh = new THREE.Mesh(geometry, makeMaterial());
@@ -659,22 +662,28 @@ function importSTL(file) {
       checkScaleControls();
 
       document.getElementById('animalTag').textContent = '📂 ' + modelName;
-      document.getElementById('anatomyList').innerHTML = '<div class="text-muted small">Modelo STL importado do seu computador</div>';
+      document.getElementById('anatomyList').innerHTML = '<div class="text-muted small">Modelo STL importado: ' + modelName + '</div>';
       showLoading(false);
     } catch(err) {
-      console.error(err);
-      alert('Erro ao carregar STL: ' + err.message);
+      console.error('Error importing STL:', err);
+      alert('Erro ao carregar STL: ' + err.message + '\n\nVeja o console (F12) para detalhes.');
       showLoading(false);
     }
+  };
+  reader.onerror = function() {
+    console.error('FileReader error');
+    alert('Erro ao ler arquivo. Tente novamente.');
+    showLoading(false);
   };
   reader.readAsArrayBuffer(file);
 }
 
 function importFolder(fileList) {
-  showLoading(true);
+  console.log('Starting importFolder with', fileList.length, 'files');
+  showLoading(true, 'Importando pasta...');
   importedModels = [];
   let loaded = 0;
-  const total = fileList.length;
+  const total = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.stl')).length;
 
   if (total === 0) {
     alert('Nenhum arquivo STL encontrado na pasta.');
@@ -682,12 +691,15 @@ function importFolder(fileList) {
     return;
   }
 
+  console.log('Found', total, 'STL files to load');
+
   for (const file of fileList) {
     if (!file.name.toLowerCase().endsWith('.stl')) continue;
 
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
+        console.log('Loaded:', file.name);
         const loader = new STLLoader();
         const geometry = loader.parse(e.target.result);
         const mesh = new THREE.Mesh(geometry, makeMaterial());
@@ -707,6 +719,7 @@ function importFolder(fileList) {
       }
 
       loaded++;
+      console.log('Progress:', loaded, '/', total);
       if (loaded >= total) {
         updateModelSelect();
         // Exibir o primeiro modelo
@@ -721,6 +734,9 @@ function importFolder(fileList) {
         }
         showLoading(false);
       }
+    };
+    reader.onerror = function() {
+      console.error('Erro ao ler arquivo:', file.name);
     };
     reader.readAsArrayBuffer(file);
   }
@@ -819,25 +835,23 @@ document.getElementById('btn-zip').addEventListener('click', downloadZIP);
 
 // Import STL
 document.getElementById('btn-import').addEventListener('click', () => {
+  console.log('Import STL clicked');
   document.getElementById('file-import').click();
 });
 document.getElementById('file-import').addEventListener('change', (e) => {
+  console.log('File selected:', e.target.files && e.target.files[0]);
   if (e.target.files && e.target.files[0]) {
     importSTL(e.target.files[0]);
   }
 });
 
-// Show/hide scale controls based on whether we have imported models
-function checkScaleControls() {
-  const hasModel = importedModels.length > 0 || currentMesh;
-  scaleControls.style.display = hasModel ? 'block' : 'none';
-}
-
 // Import Folder
 document.getElementById('btn-import-folder').addEventListener('click', () => {
+  console.log('Import Folder clicked');
   document.getElementById('folder-import').click();
 });
 document.getElementById('folder-import').addEventListener('change', (e) => {
+  console.log('Folder selected:', e.target.files && e.target.files.length, 'files');
   if (e.target.files && e.target.files.length > 0) {
     importFolder(e.target.files);
   }
@@ -883,42 +897,101 @@ document.getElementById('btn-larger').addEventListener('click', () => {
   updateModelScale(newVal);
 });
 
+// Raycaster para selecionar modelo 3D
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selectedModel = null;
+let originalMaterial = null;
+
+function setupRaycaster() {
+  const canvas = canvasEl;
+  
+  canvas.addEventListener('pointerdown', (event) => {
+    if (!currentMesh) return;
+
+    // Normalize mouse position
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(currentMesh);
+
+    if (intersects.length > 0) {
+      console.log('Modelo 3D selecionado!');
+      
+      // Destacar modelo selecionado
+      if (selectedModel && originalMaterial) {
+        selectedModel.material = originalMaterial;
+      }
+      
+      selectedModel = currentMesh;
+      originalMaterial = currentMesh.material;
+      
+      const highlightMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4cc9f0,
+        metalness: 0.1,
+        roughness: 0.6,
+        emissive: 0x224466,
+        emissiveIntensity: 0.3,
+      });
+      currentMesh.material = highlightMaterial;
+
+      // Mostrar controles de escala
+      checkScaleControls();
+    }
+  });
+}
+
+// Botão Padronizar - ajusta para dentro de 100mm (10cm) na maior dimensão
 document.getElementById('btn-standardize').addEventListener('click', () => {
   if (!currentMesh) {
-    alert('Nenhum modelo carregado para padronizar.');
+    alert('Nenhum modelo carregado. Importe um STL primeiro.');
     return;
   }
-  
+
   // Get current bounding box
   const box = new THREE.Box3().setFromObject(currentMesh);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
-  // Target: 100mm (10cm) maximum dimension
-  const targetSize = 100; // 100mm = 10cm
+  // Target: 100mm (10cm) maximum dimension - ensures model fits comfortably
+  const targetSize = 100; // 100mm
   const scaleFactor = targetSize / maxDim;
-  const percentScale = scaleFactor * 100;
   
-  // Apply scale
+  // Aplicar escala mantendo proporção
   currentMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
   currentMesh.updateMatrixWorld();
   
-  // Update slider
+  // Atualizar slider e display
+  const percentScale = scaleFactor * 100;
   modelScaleSlider.value = Math.min(500, Math.max(10, percentScale));
   modelScaleVal.textContent = Math.round(percentScale) + '%';
   
   // Reframe camera
   frameCamera(currentMesh);
   
-  alert(`Modelo padronizado para ${targetSize}mm (10cm) na maior dimensão.`);
+  // Atualizar dimensões exibidas
+  const newBox = new THREE.Box3().setFromObject(currentMesh);
+  const newSize = newBox.getSize(new THREE.Vector3());
+  document.getElementById('dimX').textContent = (newSize.x * 10).toFixed(1) + ' cm';
+  document.getElementById('dimY').textContent = (newSize.y * 10).toFixed(1) + ' cm';
+  document.getElementById('dimZ').textContent = (newSize.z * 10).toFixed(1) + ' cm';
+  
+  console.log('Modelo padronizado para:', targetSize, 'mm');
+  console.log('Escala aplicada:', scaleFactor);
+  console.log('Dimensões finais:', newSize.x*10, 'x', newSize.y*10, 'x', newSize.z*10, 'cm');
+  
+  alert(`✅ Modelo padronizado!\n\nDimensões: ${(newSize.x*10).toFixed(1)}×${(newSize.y*10).toFixed(1)}×${(newSize.z*10).toFixed(1)} cm\nEscala: ${Math.round(percentScale)}%`);
 });
+
+setupRaycaster();
 
 // Show/hide scale controls based on whether we have imported models
 function checkScaleControls() {
-  if (importedModels.length > 0 || currentMesh) {
-    scaleControls.style.display = 'block';
-  } else {
-    scaleControls.style.display = 'none';
+  if (scaleControls) {
+    const hasModel = importedModels.length > 0 || currentMesh;
+    scaleControls.style.display = hasModel ? 'block' : 'none';
   }
 }
 
