@@ -170,6 +170,15 @@
         <div class="card-body p-0">
           <div id="viewer">
             <canvas id="viewer-canvas"></canvas>
+            <!-- Controles de Transformação -->
+            <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1" style="z-index:100;">
+              <button id="btn-translate" class="btn btn-sm btn-outline-primary" title="Mover (T)">✋ Mover</button>
+              <button id="btn-rotate" class="btn btn-sm btn-outline-success" title="Rotacionar (R)">🔄 Rotacionar</button>
+              <button id="btn-align-x" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo X">📐 Alinhar X</button>
+              <button id="btn-align-y" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Y">📐 Alinhar Y</button>
+              <button id="btn-align-z" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Z">📐 Alinhar Z</button>
+              <button id="btn-reset-transform" class="btn btn-sm btn-outline-danger" title="Resetar posição">🔄 Resetar</button>
+            </div>
             <div class="loading-overlay" id="loading">
               <div class="spinner-border text-primary mb-2" role="status"></div>
               <div class="fw-bold">Gerando modelo 3D...</div>
@@ -204,6 +213,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
 /* =====================================================================
@@ -514,7 +524,7 @@ const viewer = document.getElementById('viewer');
 const canvasEl = document.getElementById('viewer-canvas');
 const loadingOv = document.getElementById('loading');
 
-let scene, camera, renderer, controls, currentMesh;
+let scene, camera, renderer, controls, currentMesh, transformControls;
 let autoRotateEnabled = true;
 
 function initThree() {
@@ -538,6 +548,18 @@ function initThree() {
     controls.autoRotate = false;
     setTimeout(() => { controls.autoRotate = autoRotateEnabled; }, 3000);
   });
+
+  // TransformControls para mover, rotacionar e alinhar
+  transformControls = new TransformControls(camera, renderer.domElement);
+  transformControls.addEventListener('dragging-changed', function(event) {
+    controls.enabled = !event.value;
+  });
+  transformControls.addEventListener('change', function() {
+    if (currentMesh) {
+      frameCamera(currentMesh);
+    }
+  });
+  scene.add(transformControls);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.6));
   let sun = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -758,6 +780,8 @@ function displayModel(mesh) {
   currentMesh = mesh;
   scene.add(currentMesh);
   frameCamera(currentMesh);
+  // Attach TransformControls automatically when displaying a model
+  attachTransformControls(currentMesh);
 }
 
 function selectModel(index) {
@@ -767,6 +791,8 @@ function selectModel(index) {
   scene.add(currentMesh);
   frameCamera(currentMesh);
   document.getElementById('animalTag').textContent = '📂 ' + importedModels[index].name;
+  // Attach TransformControls automatically when selecting a model
+  attachTransformControls(currentMesh);
 }
 
 /* ========= UI ========= */
@@ -903,11 +929,30 @@ const mouse = new THREE.Vector2();
 let selectedModel = null;
 let originalMaterial = null;
 
+function attachTransformControls(mesh) {
+  if (!transformControls || !mesh) return;
+  transformControls.detach();
+  transformControls.setObject(mesh);
+  transformControls.showX(true);
+  transformControls.showY(true);
+  transformControls.showZ(true);
+  console.log('TransformControls attached to:', mesh.name || 'model');
+}
+
+function detachTransformControls() {
+  if (transformControls) {
+    transformControls.detach();
+  }
+}
+
 function setupRaycaster() {
   const canvas = canvasEl;
-  
+
   canvas.addEventListener('pointerdown', (event) => {
-    if (!currentMesh) return;
+    if (!currentMesh || transformControls.dragging) return;
+
+    // Don't trigger selection while transforming
+    if (event.button !== 0) return;
 
     // Normalize mouse position
     const rect = canvas.getBoundingClientRect();
@@ -919,15 +964,15 @@ function setupRaycaster() {
 
     if (intersects.length > 0) {
       console.log('Modelo 3D selecionado!');
-      
+
       // Destacar modelo selecionado
       if (selectedModel && originalMaterial) {
         selectedModel.material = originalMaterial;
       }
-      
+
       selectedModel = currentMesh;
       originalMaterial = currentMesh.material;
-      
+
       const highlightMaterial = new THREE.MeshStandardMaterial({
         color: 0x4cc9f0,
         metalness: 0.1,
@@ -937,10 +982,97 @@ function setupRaycaster() {
       });
       currentMesh.material = highlightMaterial;
 
+      // Attach TransformControls
+      attachTransformControls(currentMesh);
+
       // Mostrar controles de escala
       checkScaleControls();
     }
   });
+}
+
+// Keyboard controls for TransformControls (T=translate, R=rotate)
+document.addEventListener('keydown', (event) => {
+  if (!transformControls || !currentMesh) return;
+
+  if (event.key === 't' || event.key === 'T') {
+    transformControls.setMode('translate');
+    console.log('Modo: Mover (T)');
+  } else if (event.key === 'r' || event.key === 'R') {
+    transformControls.setMode('rotate');
+    console.log('Modo: Rotacionar (R)');
+  } else if (event.key === 's' || event.key === 'S') {
+    transformControls.setMode('scale');
+    console.log('Modo: Escala (S)');
+  } else if (event.key === 'Escape') {
+    transformControls.reset();
+    console.log('Transform reset');
+  }
+});
+
+// Transform mode buttons
+document.getElementById('btn-translate').addEventListener('click', () => {
+  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  transformControls.setMode('translate');
+  console.log('Modo: Mover');
+});
+
+document.getElementById('btn-rotate').addEventListener('click', () => {
+  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  transformControls.setMode('rotate');
+  console.log('Modo: Rotacionar');
+});
+
+// Align buttons
+document.getElementById('btn-align-x').addEventListener('click', () => {
+  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  alignModel('x');
+});
+
+document.getElementById('btn-align-y').addEventListener('click', () => {
+  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  alignModel('y');
+});
+
+document.getElementById('btn-align-z').addEventListener('click', () => {
+  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  alignModel('z');
+});
+
+document.getElementById('btn-reset-transform').addEventListener('click', () => {
+  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  currentMesh.position.set(0, 0, 0);
+  currentMesh.rotation.set(0, 0, 0);
+  transformControls.reset();
+
+  // Recalcular posição base
+  let box = new THREE.Box3().setFromObject(currentMesh);
+  let center = box.getCenter(new THREE.Vector3());
+  currentMesh.position.sub(center);
+  currentMesh.position.y += (box.max.y - box.min.y) / 2;
+
+  frameCamera(currentMesh);
+  console.log('Posição reiniciada');
+});
+
+// Align model to axis (reset rotation around that axis)
+function alignModel(axis) {
+  if (!currentMesh) return;
+
+  const rotation = currentMesh.rotation;
+  if (axis === 'x') {
+    rotation.y = 0;
+    rotation.z = 0;
+  } else if (axis === 'y') {
+    rotation.x = 0;
+    rotation.z = 0;
+  } else if (axis === 'z') {
+    rotation.x = 0;
+    rotation.y = 0;
+  }
+
+  frameCamera(currentMesh);
+  console.log('Modelo alinhado ao eixo:', axis.toUpperCase());
 }
 
 // Botão Padronizar - ajusta para dentro de 100mm (10cm) na maior dimensão
