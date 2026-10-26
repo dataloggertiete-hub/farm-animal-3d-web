@@ -34,6 +34,9 @@
   .animal-selector select:hover { background:#fff; border-color:#667eea; }
   .print-limit { background:#fff3cd; border-left:4px solid #ffc107; padding:10px 14px; border-radius:6px; margin-top:12px; }
   .print-limit strong { color:#856404; }
+  .model-select-box { background:#e3f2fd; border-radius:8px; padding:10px 12px; margin-top:10px; }
+  .model-select-box label { font-size:0.75rem; font-weight:600; color:#1976d2; margin-bottom:4px; display:block; }
+  .model-select-box select { font-size:0.85rem; padding:6px 10px; }
 </style>
 </head>
 <body>
@@ -90,6 +93,19 @@
           <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2">📥 Baixar ZIP</button>
           <button id="btn-import" class="btn btn-outline-primary btn-sm py-2">📂 Importar STL</button>
           <input type="file" id="file-import" accept=".stl" style="display:none;">
+          <button id="btn-import-folder" class="btn btn-outline-info btn-sm py-2">📂 Importar Pasta (vários STL)</button>
+          <input type="file" id="folder-import" webkitdirectory directory multiple accept=".stl" style="display:none;">
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label fw-semibold">📋 Modelos carregados</label>
+          <div class="model-select-box">
+            <label>📂 Selecione um modelo da pasta:</label>
+            <select id="model-select" class="form-select form-select-sm">
+              <option value="">-- Nenhum modelo carregado --</option>
+            </select>
+            <div class="small text-muted mt-1" id="model-count"></div>
+          </div>
         </div>
 
         <div class="print-limit">
@@ -591,6 +607,9 @@ function displaySolid(gen) {
   }, 50);
 }
 
+// Armazenamento de modelos importados
+let importedModels = [];
+
 function importSTL(file) {
   showLoading(true);
   const reader = new FileReader();
@@ -598,20 +617,27 @@ function importSTL(file) {
     try {
       const loader = new STLLoader();
       const geometry = loader.parse(e.target.result);
-      clearCurrent();
-      currentMesh = new THREE.Mesh(geometry, makeMaterial());
-      currentMesh.castShadow = true;
-      currentMesh.receiveShadow = true;
+      const mesh = new THREE.Mesh(geometry, makeMaterial());
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
 
-      let box = new THREE.Box3().setFromObject(currentMesh);
+      // Centralizar
+      let box = new THREE.Box3().setFromObject(mesh);
       let center = box.getCenter(new THREE.Vector3());
-      currentMesh.position.sub(center);
-      currentMesh.position.y += (box.max.y - box.min.y) / 2;
+      mesh.position.sub(center);
+      mesh.position.y += (box.max.y - box.min.y) / 2;
 
-      scene.add(currentMesh);
-      frameCamera(currentMesh);
+      // Salvar modelo
+      const modelName = file.name.replace('.stl', '');
+      importedModels.push({ name: modelName, mesh: mesh, geometry: geometry });
 
-      document.getElementById('animalTag').textContent = '📂 Importado';
+      // Atualizar menu de seleção
+      updateModelSelect();
+
+      // Exibir
+      displayModel(mesh);
+
+      document.getElementById('animalTag').textContent = '📂 ' + modelName;
       document.getElementById('anatomyList').innerHTML = '<div class="text-muted small">Modelo STL importado do seu computador</div>';
       showLoading(false);
     } catch(err) {
@@ -621,6 +647,86 @@ function importSTL(file) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function importFolder(fileList) {
+  showLoading(true);
+  importedModels = [];
+  let loaded = 0;
+  const total = fileList.length;
+
+  if (total === 0) {
+    alert('Nenhum arquivo STL encontrado na pasta.');
+    showLoading(false);
+    return;
+  }
+
+  for (const file of fileList) {
+    if (!file.name.toLowerCase().endsWith('.stl')) continue;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const loader = new STLLoader();
+        const geometry = loader.parse(e.target.result);
+        const mesh = new THREE.Mesh(geometry, makeMaterial());
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Centralizar
+        let box = new THREE.Box3().setFromObject(mesh);
+        let center = box.getCenter(new THREE.Vector3());
+        mesh.position.sub(center);
+        mesh.position.y += (box.max.y - box.min.y) / 2;
+
+        const modelName = file.name.replace('.stl', '');
+        importedModels.push({ name: modelName, mesh: mesh, geometry: geometry });
+      } catch(err) {
+        console.error('Erro ao carregar ' + file.name + ':', err);
+      }
+
+      loaded++;
+      if (loaded >= total) {
+        updateModelSelect();
+        // Exibir o primeiro modelo
+        if (importedModels.length > 0) {
+          displayModel(importedModels[0].mesh);
+          document.getElementById('animalTag').textContent = '📂 Pasta importada (' + importedModels.length + ' modelos)';
+          document.getElementById('anatomyList').innerHTML = 
+            '<div class="text-muted small">Pasta importada com ' + importedModels.length + ' modelos</div>';
+        }
+        showLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function updateModelSelect() {
+  const select = document.getElementById('model-select');
+  select.innerHTML = '<option value="">-- Selecione um modelo --</option>';
+  importedModels.forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  });
+}
+
+function displayModel(mesh) {
+  clearCurrent();
+  currentMesh = mesh;
+  scene.add(currentMesh);
+  frameCamera(currentMesh);
+}
+
+function selectModel(index) {
+  if (index < 0 || index >= importedModels.length) return;
+  clearCurrent();
+  currentMesh = importedModels[index].mesh;
+  scene.add(currentMesh);
+  frameCamera(currentMesh);
+  document.getElementById('animalTag').textContent = '📂 ' + importedModels[index].name;
 }
 
 /* ========= UI ========= */
@@ -694,6 +800,24 @@ document.getElementById('btn-import').addEventListener('click', () => {
 document.getElementById('file-import').addEventListener('change', (e) => {
   if (e.target.files && e.target.files[0]) {
     importSTL(e.target.files[0]);
+  }
+});
+
+// Import Folder
+document.getElementById('btn-import-folder').addEventListener('click', () => {
+  document.getElementById('folder-import').click();
+});
+document.getElementById('folder-import').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    importFolder(e.target.files);
+  }
+});
+
+// Select model
+document.getElementById('model-select').addEventListener('change', (e) => {
+  const idx = parseInt(e.target.value);
+  if (!isNaN(idx) && idx >= 0) {
+    selectModel(idx);
   }
 });
 
