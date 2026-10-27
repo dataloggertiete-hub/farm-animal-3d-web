@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -42,6 +42,9 @@
   .rotation-readout-values { display:flex; justify-content:space-between; gap:8px; }
   .rotation-readout-values span { white-space:nowrap; }
   .rotation-readout strong { color:#8be9fd; font-variant-numeric:tabular-nums; }
+  .language-picker { color:#fff; font-size:.8rem; }
+  .language-picker select { min-width:92px; font-weight:600; cursor:pointer; }
+  @media (max-width: 768px) { .navbar-text { display:none; } .language-picker select { min-width:84px; } }
 </style>
 </head>
 <body>
@@ -50,10 +53,19 @@
 <nav class="navbar navbar-custom navbar-dark py-3">
   <div class="container-fluid">
     <span class="navbar-brand h4 mb-0">🦙 Animal 3D Studio</span>
-    <span class="navbar-text small">Realistic anatomical models for 3D printing</span>
-    <div class="d-flex gap-2">
-      <span class="info-badge">🔄 Auto-rotation enabled</span>
-      <span class="info-badge">📏 Max 15 cm</span>
+    <span class="navbar-text small" data-i18n="navSubtitle">Modelos anatômicos realistas para impressão 3D</span>
+    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+      <span class="info-badge" data-i18n="autoRotation">🔄 Rotação automática ativada</span>
+      <span class="info-badge" data-i18n="maxSize">📏 Máx. 15 cm</span>
+      <label class="language-picker d-flex align-items-center gap-1 mb-0" for="language-select">
+        <span class="visually-hidden" data-i18n="languageLabel">Idioma</span>
+        <span aria-hidden="true">🌐</span>
+        <select id="language-select" class="form-select form-select-sm" aria-label="Idioma">
+          <option value="pt-BR">PT-BR</option>
+          <option value="en-US">EN-US</option>
+          <option value="es-419">ES-LATAM</option>
+        </select>
+      </label>
     </div>
   </div>
 </nav>
@@ -63,10 +75,10 @@
     <!-- Left Sidebar -->
     <div class="col-12 col-lg-3 order-2 order-lg-1">
       <div class="control-panel mb-4">
-        <h5 class="fw-bold mb-3">⚙️ Settings</h5>
+        <h5 class="fw-bold mb-3" data-i18n="settings">⚙️ Configurações</h5>
 
         <div class="mb-3">
-          <label class="form-label fw-semibold">📐 Scale</label>
+          <label class="form-label fw-semibold" data-i18n="scale">📐 Escala</label>
           <input type="range" id="scale" class="form-range" value="10" min="5" max="15" step="0.5">
           <div class="d-flex justify-content-between small text-muted">
             <span>5 mm</span>
@@ -76,47 +88,47 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label fw-semibold">🛠️ Model type</label>
+          <label class="form-label fw-semibold" data-i18n="modelType">🛠️ Tipo de modelo</label>
           <div class="form-check">
             <input class="form-check-input" type="radio" name="tipo" value="solido" checked id="t-solido">
-            <label class="form-check-label small" for="t-solido">Solid (1 piece)</label>
+            <label class="form-check-label small" for="t-solido" data-i18n="solid">Sólido (1 peça)</label>
           </div>
           <div class="form-check">
             <input class="form-check-input" type="radio" name="tipo" value="articulado" id="t-art">
-            <label class="form-check-label small" for="t-art">Articulated (multiple pieces)</label>
+            <label class="form-check-label small" for="t-art" data-i18n="articulated">Articulado (várias peças)</label>
           </div>
         </div>
 
         <div class="mb-3" id="joint-field" style="display:none;">
-          <label class="form-label fw-semibold">🔩 Joint</label>
+          <label class="form-label fw-semibold" data-i18n="joint">🔩 Junta</label>
           <input type="range" id="joint" class="form-range" value="3" min="1" max="8" step="0.5">
           <div class="text-end small text-muted"><span id="jointVal">3</span> mm</div>
         </div>
 
         <div class="d-grid gap-2">
-          <button id="btn-stl" class="btn btn-gradient btn-sm py-2">📥 Export STL for 3D Printing</button>
-          <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2">📥 Download ZIP</button>
-          <button id="btn-import" class="btn btn-outline-primary btn-sm py-2">📂 Import STL</button>
+          <button id="btn-stl" class="btn btn-gradient btn-sm py-2" data-i18n="exportStl">📥 Exportar STL para impressão 3D</button>
+          <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2" data-i18n="downloadZip">📥 Baixar ZIP</button>
+          <button id="btn-import" class="btn btn-outline-primary btn-sm py-2" data-i18n="importStl">📂 Importar STL</button>
           <input type="file" id="file-import" accept=".stl" style="display:none;">
-          <button id="btn-import-folder" class="btn btn-outline-info btn-sm py-2">📂 Import Folder (multiple STL files)</button>
+          <button id="btn-import-folder" class="btn btn-outline-info btn-sm py-2" data-i18n="importFolder">📂 Importar pasta (vários STL)</button>
           <input type="file" id="folder-import" webkitdirectory directory multiple accept=".stl" style="display:none;">
         </div>
 
         <div class="mt-3">
-          <label class="form-label fw-semibold">📋 Loaded models</label>
+          <label class="form-label fw-semibold" data-i18n="loadedModels">📋 Modelos carregados</label>
           <div class="model-select-box">
-            <label>📂 Select a model from the folder:</label>
+            <label data-i18n="selectModel">📂 Selecione um modelo da pasta:</label>
             <select id="model-select" class="form-select form-select-sm">
-              <option value="">-- No model loaded --</option>
+              <option value="" data-i18n="noModelLoaded">-- Nenhum modelo carregado --</option>
             </select>
             <div class="small text-muted mt-1" id="model-count"></div>
-            <button id="btn-save-adjustments" class="btn btn-outline-success btn-sm w-100 mt-2">💾 Salvar ajustes</button>
+            <button id="btn-save-adjustments" class="btn btn-outline-success btn-sm w-100 mt-2" data-i18n="saveAdjustments">💾 Salvar ajustes</button>
             <div class="small text-success mt-1" id="save-adjustments-status" aria-live="polite"></div>
           </div>
         </div>
 
         <div class="mt-3" id="scale-controls" style="display:none;">
-          <label class="form-label fw-semibold">🔍 Adjust Size</label>
+          <label class="form-label fw-semibold" data-i18n="adjustSize">🔍 Ajustar tamanho</label>
           <div class="d-flex gap-2 align-items-center mb-2">
             <button id="btn-smaller" class="btn btn-outline-secondary btn-sm" title="Diminuir">➖</button>
             <input type="range" id="model-scale" class="form-range" value="100" min="10" max="500" step="5">
@@ -127,37 +139,37 @@
             <span id="model-scale-val" class="fw-bold text-primary">100%</span>
             <span>500%</span>
           </div>
-          <label for="target-size" class="form-label small mb-1">Final real size (largest dimension, mm)</label>
+          <label for="target-size" class="form-label small mb-1" data-i18n="finalSize">Tamanho final real (maior dimensão, mm)</label>
           <input type="number" id="target-size" class="form-control form-control-sm mb-2" value="100" min="1" max="150" step="1">
-          <button id="btn-standardize" class="btn btn-success btn-sm w-100">📏 Set Final Size</button>
-          <div class="small text-muted mt-1">Scales the model proportionally to the final size entered above</div>
+          <button id="btn-standardize" class="btn btn-success btn-sm w-100" data-i18n="setFinalSize">📏 Definir tamanho final</button>
+          <div class="small text-muted mt-1" data-i18n="scaleProportionally">Redimensiona o modelo proporcionalmente ao tamanho final informado</div>
         </div>
 
         <div class="print-limit">
-          <strong>📏 Print limit:</strong><br>
-          <span class="small">Maximum 15 cm (150 mm) to fit most home 3D printers.</span>
+          <strong data-i18n="printLimit">📏 Limite de impressão:</strong><br>
+          <span class="small" data-i18n="printLimitText">Máximo de 15 cm (150 mm) para caber na maioria das impressoras 3D domésticas.</span>
         </div>
       </div>
 
       <!-- Dimensions -->
       <div class="dimension-box mb-4">
-        <div class="dimension-label mb-2">📐 Real Dimensions</div>
+        <div class="dimension-label mb-2" data-i18n="realDimensions">📐 Dimensões reais</div>
         <div class="row g-2 text-center">
           <div class="col-4">
             <div id="dimX" class="dimension-value">--</div>
-            <div class="small text-muted">Width</div>
+            <div class="small text-muted" data-i18n="width">Largura</div>
           </div>
           <div class="col-4">
             <div id="dimY" class="dimension-value">--</div>
-            <div class="small text-muted">Height</div>
+            <div class="small text-muted" data-i18n="height">Altura</div>
           </div>
           <div class="col-4">
             <div id="dimZ" class="dimension-value">--</div>
-            <div class="small text-muted">Depth</div>
+            <div class="small text-muted" data-i18n="depth">Profundidade</div>
           </div>
         </div>
         <div class="mt-2 pt-2 border-top">
-          <div class="small text-muted">Scale: <span id="scaleDisplay" class="fw-bold text-primary">10</span> mm</div>
+          <div class="small text-muted"><span data-i18n="scaleLabel">Escala:</span> <span id="scaleDisplay" class="fw-bold text-primary">10</span> mm</div>
         </div>
       </div>
 
@@ -165,7 +177,7 @@
       <div class="card border-0">
         <div class="card-body p-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold mb-0">🔬 Details</h6>
+            <h6 class="fw-bold mb-0" data-i18n="details">🔬 Detalhes</h6>
             <span id="animalTag" class="info-badge">Bovine</span>
           </div>
           <div id="anatomyList" class="detail-list"></div>
@@ -213,11 +225,11 @@
 <!-- Top-right Animal Selector -->
 <div class="animal-selector">
   <select id="animal" class="form-select">
-    <option value="bovino">🐄 Bovine</option>
-    <option value="equino">🐴 Equine</option>
-    <option value="suino">🐷 Swine</option>
-    <option value="ave">🐓 Bird</option>
-    <option value="ovino">🐑 Sheep</option>
+    <option value="bovino" data-i18n="bovine">🐄 Bovino</option>
+    <option value="equino" data-i18n="equine">🐴 Equino</option>
+    <option value="suino" data-i18n="swine">🐷 Suíno</option>
+    <option value="ave" data-i18n="bird">🐓 Ave</option>
+    <option value="ovino" data-i18n="sheep">🐑 Ovino</option>
   </select>
 </div>
 
@@ -235,6 +247,42 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+
+/* =====================================================================
+   INTERNATIONALIZATION
+   ===================================================================== */
+const TRANSLATIONS = {
+  'pt-BR': {
+    navSubtitle:'Modelos anatômicos realistas para impressão 3D', autoRotation:'🔄 Rotação automática ativada', maxSize:'📏 Máx. 15 cm', languageLabel:'Idioma',
+    settings:'⚙️ Configurações', scale:'📐 Escala', modelType:'🛠️ Tipo de modelo', solid:'Sólido (1 peça)', articulated:'Articulado (várias peças)', joint:'🔩 Junta',
+    exportStl:'📥 Exportar STL para impressão 3D', downloadZip:'📥 Baixar ZIP', importStl:'📂 Importar STL', importFolder:'📂 Importar pasta (vários STL)', loadedModels:'📋 Modelos carregados', selectModel:'📂 Selecione um modelo da pasta:', noModelLoaded:'-- Nenhum modelo carregado --', saveAdjustments:'💾 Salvar ajustes',
+    adjustSize:'🔍 Ajustar tamanho', finalSize:'Tamanho final real (maior dimensão, mm)', setFinalSize:'📏 Definir tamanho final', scaleProportionally:'Redimensiona o modelo proporcionalmente ao tamanho final informado', printLimit:'📏 Limite de impressão:', printLimitText:'Máximo de 15 cm (150 mm) para caber na maioria das impressoras 3D domésticas.', realDimensions:'📐 Dimensões reais', scaleLabel:'Escala:', width:'Largura', height:'Altura', depth:'Profundidade', details:'🔬 Detalhes',
+    bovine:'🐄 Bovino', equine:'🐴 Equino', swine:'🐷 Suíno', bird:'🐓 Ave', sheep:'🐑 Ovino', loading:'Gerando modelo 3D...', building:'Construindo geometria detalhada', currentRotation:'Rotação atual',
+    select3d:'Selecione um modelo 3D clicando nele', noModel:'Nenhum modelo carregado. Importe ou gere um modelo primeiro.', importFirst:'Nenhum modelo carregado. Importe um STL primeiro.', zipDev:'O download ZIP ainda está em desenvolvimento. Use o STL por enquanto.', saved:'✓ Ajustes salvos neste navegador'
+  },
+  'en-US': {
+    navSubtitle:'Realistic anatomical models for 3D printing', autoRotation:'🔄 Auto-rotation enabled', maxSize:'📏 Max 15 cm', languageLabel:'Language', settings:'⚙️ Settings', scale:'📐 Scale', modelType:'🛠️ Model type', solid:'Solid (1 piece)', articulated:'Articulated (multiple pieces)', joint:'🔩 Joint', exportStl:'📥 Export STL for 3D printing', downloadZip:'📥 Download ZIP', importStl:'📂 Import STL', importFolder:'📂 Import folder (multiple STL files)', loadedModels:'📋 Loaded models', selectModel:'📂 Select a model from the folder:', noModelLoaded:'-- No model loaded --', saveAdjustments:'💾 Save adjustments', adjustSize:'🔍 Adjust size', finalSize:'Final real size (largest dimension, mm)', setFinalSize:'📏 Set final size', scaleProportionally:'Scales the model proportionally to the final size entered above', printLimit:'📏 Print limit:', printLimitText:'Maximum 15 cm (150 mm) to fit most home 3D printers.', realDimensions:'📐 Real dimensions', scaleLabel:'Scale:', width:'Width', height:'Height', depth:'Depth', details:'🔬 Details', bovine:'🐄 Bovine', equine:'🐴 Equine', swine:'🐷 Swine', bird:'🐓 Bird', sheep:'🐑 Sheep', loading:'Generating 3D model...', building:'Building detailed geometry', currentRotation:'Current rotation', select3d:'Select a 3D model by clicking it', noModel:'No model loaded. Import or generate a model first.', importFirst:'No model loaded. Import an STL first.', zipDev:'ZIP download is still under development. Use STL for now.', saved:'✓ Adjustments saved in this browser'
+  },
+  'es-419': {
+    navSubtitle:'Modelos anatómicos realistas para impresión 3D', autoRotation:'🔄 Rotación automática activada', maxSize:'📏 Máx. 15 cm', languageLabel:'Idioma', settings:'⚙️ Configuración', scale:'📐 Escala', modelType:'🛠️ Tipo de modelo', solid:'Sólido (1 pieza)', articulated:'Articulado (varias piezas)', joint:'🔩 Junta', exportStl:'📥 Exportar STL para impresión 3D', downloadZip:'📥 Descargar ZIP', importStl:'📂 Importar STL', importFolder:'📂 Importar carpeta (varios STL)', loadedModels:'📋 Modelos cargados', selectModel:'📂 Selecciona un modelo de la carpeta:', noModelLoaded:'-- No hay modelos cargados --', saveAdjustments:'💾 Guardar ajustes', adjustSize:'🔍 Ajustar tamaño', finalSize:'Tamaño final real (mayor dimensión, mm)', setFinalSize:'📏 Definir tamaño final', scaleProportionally:'Escala el modelo proporcionalmente al tamaño final indicado', printLimit:'📏 Límite de impresión:', printLimitText:'Máximo 15 cm (150 mm) para adaptarse a la mayoría de las impresoras 3D domésticas.', realDimensions:'📐 Dimensiones reales', scaleLabel:'Escala:', width:'Ancho', height:'Alto', depth:'Profundidad', details:'🔬 Detalles', bovine:'🐄 Bovino', equine:'🐴 Equino', swine:'🐷 Cerdo', bird:'🐓 Ave', sheep:'🐑 Ovino', loading:'Generando modelo 3D...', building:'Construyendo geometría detallada', currentRotation:'Rotación actual', select3d:'Selecciona un modelo 3D haciendo clic en él', noModel:'No hay modelos cargados. Importa o genera un modelo primero.', importFirst:'No hay modelos cargados. Importa un STL primero.', zipDev:'La descarga ZIP todavía está en desarrollo. Usa STL por ahora.', saved:'✓ Ajustes guardados en este navegador'
+  }
+};
+let currentLanguage = localStorage.getItem('farm-animal-language') || (navigator.language.toLowerCase().startsWith('es') ? 'es-419' : navigator.language.toLowerCase().startsWith('en') ? 'en-US' : 'pt-BR');
+if (!TRANSLATIONS[currentLanguage]) currentLanguage = 'pt-BR';
+function t(key) { return TRANSLATIONS[currentLanguage][key] || TRANSLATIONS['pt-BR'][key] || key; }
+function applyLanguage(language = currentLanguage) {
+  currentLanguage = TRANSLATIONS[language] ? language : 'pt-BR';
+  localStorage.setItem('farm-animal-language', currentLanguage);
+  document.documentElement.lang = currentLanguage;
+  const selector = document.getElementById('language-select');
+  if (selector) selector.value = currentLanguage;
+  document.querySelectorAll('[data-i18n]').forEach((element) => {
+    const value = t(element.dataset.i18n);
+    if (value) element.textContent = value;
+  });
+  updateAnatomyInfo?.();
+  updateModelSelect?.();
+}
 
 /* =====================================================================
    GERADOR DE GEOMETRIA
@@ -530,11 +578,11 @@ function genOvine(s) {
 const SOLID_GENS = { bovino: genBovine, equino: genEquine, suino: genPorine, ave: genBird, ovino: genOvine };
 
 const ANIMAL_DETAILS = {
-  bovino: ["Chifres curvos espirais", "Orelhas grandes", "Casco duplo", "Músculos visíveis"],
-  equino: ["Crina com pelos", "Orelhas pontiagudas", "Pernas longas", "Rabo com penas"],
-  suino: ["Focinho achatado", "Orelhas caídas", "Rabo em espiral", "Pernas robustas"],
-  ave: ["16 penas no rabo", "Crista ondulada", "Barbela dupla", "4 garras por pata"],
-  ovino: ["30+ tufts de lã", "Chifres espirais", "Orelhas caídas", "Barba chinês"]
+  bovino: { 'pt-BR':['Chifres curvos espirais','Orelhas grandes','Casco duplo','Músculos visíveis'], 'en-US':['Curved spiral horns','Large ears','Split hooves','Visible muscles'], 'es-419':['Cuernos curvos en espiral','Orejas grandes','Pezuña dividida','Músculos visibles'] },
+  equino: { 'pt-BR':['Crina com pelos','Orelhas pontiagudas','Pernas longas','Rabo com pelos'], 'en-US':['Hairy mane','Pointed ears','Long legs','Hairy tail'], 'es-419':['Crin con pelo','Orejas puntiagudas','Patas largas','Cola con pelo'] },
+  suino: { 'pt-BR':['Focinho achatado','Orelhas caídas','Rabo em espiral','Pernas robustas'], 'en-US':['Flat snout','Floppy ears','Curly tail','Sturdy legs'], 'es-419':['Hocico achatado','Orejas caídas','Cola en espiral','Patas robustas'] },
+  ave: { 'pt-BR':['16 penas no rabo','Crista ondulada','Barbela dupla','4 garras por pata'], 'en-US':['16 tail feathers','Wavy comb','Double wattle','4 claws per foot'], 'es-419':['16 plumas en la cola','Cresta ondulada','Barbilla doble','4 garras por pata'] },
+  ovino: { 'pt-BR':['30+ tufos de lã','Chifres espirais','Orelhas caídas','Barba característica'], 'en-US':['30+ wool tufts','Spiral horns','Floppy ears','Characteristic beard'], 'es-419':['Más de 30 mechones de lana','Cuernos en espiral','Orejas caídas','Barba característica'] }
 };
 
 /* =====================================================================
@@ -608,7 +656,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(w, h);
 });
 
-function showLoading(v, msg="Generating 3D model...") {
+function showLoading(v, msg=t('loading')) {
   loadingOv.replaceChildren();
   loadingOv.style.display = v ? 'block' : 'none';
   if (!v) return;
@@ -620,7 +668,7 @@ function showLoading(v, msg="Generating 3D model...") {
   title.textContent = msg;
   const detail = document.createElement('div');
   detail.className = 'small text-muted mt-1';
-  detail.textContent = 'Building detailed geometry';
+  detail.textContent = t('building');
   loadingOv.append(spinner, title, detail);
 }
 
@@ -1053,7 +1101,7 @@ async function restoreImportedModels() {
 
 function updateModelSelect(status = '') {
   const select = document.getElementById('model-select');
-  select.innerHTML = '<option value="">-- Select a model --</option>';
+  select.innerHTML = `<option value="">${t('noModelLoaded')}</option>`;
   importedModels.forEach((model, index) => {
     const option = document.createElement('option');
     option.value = index;
@@ -1061,7 +1109,7 @@ function updateModelSelect(status = '') {
     select.appendChild(option);
   });
   select.value = importedModels.length ? '0' : '';
-  document.getElementById('model-count').textContent = status || `${importedModels.length}  model(s) in the list.`;
+  document.getElementById('model-count').textContent = status || `${importedModels.length} model(s) in the list.`;
 }
 
 function displayModel(mesh) {
@@ -1084,6 +1132,8 @@ function selectModel(index) {
   attachTransformControls(currentMesh);
 }
 
+document.getElementById('language-select').addEventListener('change', (event) => applyLanguage(event.target.value));
+
 /* ========= UI ========= */
 function getVals() {
   return {
@@ -1096,10 +1146,10 @@ function getVals() {
 
 function updateAnatomyInfo() {
   let animal = document.getElementById('animal').value;
-  let details = ANIMAL_DETAILS[animal] || [];
+  let details = ANIMAL_DETAILS[animal]?.[currentLanguage] || ANIMAL_DETAILS[animal]?.['pt-BR'] || [];
   let html = details.map(d => `<div class="detail-item"><span class="detail-dot"></span><span>${d}</span></div>`).join('');
   document.getElementById('anatomyList').innerHTML = html;
-  let tags = {bovino:'🐄 Bovine', equino:'🐴 Equine', suino:'🐷 Swine', ave:'🐓 Bird', ovino:'🐑 Sheep'};
+  let tags = {bovino:t('bovine'), equino:t('equine'), suino:t('swine'), ave:t('bird'), ovino:t('sheep')};
   document.getElementById('animalTag').textContent = tags[animal] || animal;
 }
 
@@ -1112,7 +1162,7 @@ function regenerate() {
 
 function downloadSTL() {
   if (!currentMesh) {
-    alert('No model loaded. Import or generate a model first.');
+    alert(t('noModel'));
     return;
   }
   showLoading(true, 'Preparing STL for 3D printing...');
@@ -1147,7 +1197,7 @@ function downloadSTL() {
 }
 
 async function downloadZIP() {
-  alert('ZIP download is still under development. Use STL for now.');
+  alert(t('zipDev'));
 }
 
 // Event Listeners
@@ -1220,7 +1270,7 @@ function saveAdjustments() {
   };
   localStorage.setItem(SAVE_ADJUSTMENTS_KEY, JSON.stringify(payload));
   if (saveAdjustmentsStatus) {
-    saveAdjustmentsStatus.textContent = '✓ Adjustments saved in this browser';
+    saveAdjustmentsStatus.textContent = t('saved');
     setTimeout(() => { saveAdjustmentsStatus.textContent = ''; }, 3000);
   }
 }
@@ -1469,7 +1519,7 @@ document.getElementById('btn-lay').addEventListener('click', () => {
 // Botão Padronizar - ajusta para dentro de 100mm (10cm) na maior dimensão
 document.getElementById('btn-standardize').addEventListener('click', () => {
   if (!currentMesh) {
-    alert('No model loaded. Import an STL first.');
+    alert(t('importFirst'));
     return;
   }
 
@@ -1521,6 +1571,7 @@ function checkScaleControls() {
 }
 
 // Init
+applyLanguage();
 initThree();
 restorePromise = restoreImportedModels().then(restored => {
   if (!restored) regenerate();
