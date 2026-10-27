@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gerador 3D de Animais de Fazenda</title>
+<title>Farm Animal 3D Studio</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
   body { background:#f0f4f8; margin:0; font-family:'Segoe UI',system-ui,sans-serif; }
@@ -50,23 +50,23 @@
 <nav class="navbar navbar-custom navbar-dark py-3">
   <div class="container-fluid">
     <span class="navbar-brand h4 mb-0">🦙 Animal 3D Studio</span>
-    <span class="navbar-text small">Modelos anatômicos realistas para impressão 3D</span>
+    <span class="navbar-text small">Realistic anatomical models for 3D printing</span>
     <div class="d-flex gap-2">
-      <span class="info-badge">🔄 Auto-rotação ativa</span>
-      <span class="info-badge">📏 Máx 15 cm</span>
+      <span class="info-badge">🔄 Auto-rotation enabled</span>
+      <span class="info-badge">📏 Max 15 cm</span>
     </div>
   </div>
 </nav>
 
 <div class="container-fluid py-4">
   <div class="row g-4">
-    <!-- Painel Lateral Esquerdo -->
+    <!-- Left Sidebar -->
     <div class="col-12 col-lg-3 order-2 order-lg-1">
       <div class="control-panel mb-4">
-        <h5 class="fw-bold mb-3">⚙️ Configurações</h5>
+        <h5 class="fw-bold mb-3">⚙️ Settings</h5>
 
         <div class="mb-3">
-          <label class="form-label fw-semibold">📐 Escala</label>
+          <label class="form-label fw-semibold">📐 Scale</label>
           <input type="range" id="scale" class="form-range" value="10" min="5" max="15" step="0.5">
           <div class="d-flex justify-content-between small text-muted">
             <span>5 mm</span>
@@ -76,38 +76,38 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label fw-semibold">🛠️ Tipo de modelo</label>
+          <label class="form-label fw-semibold">🛠️ Model type</label>
           <div class="form-check">
             <input class="form-check-input" type="radio" name="tipo" value="solido" checked id="t-solido">
-            <label class="form-check-label small" for="t-solido">Sólido (1 peça)</label>
+            <label class="form-check-label small" for="t-solido">Solid (1 piece)</label>
           </div>
           <div class="form-check">
             <input class="form-check-input" type="radio" name="tipo" value="articulado" id="t-art">
-            <label class="form-check-label small" for="t-art">Articulado (múltiplas peças)</label>
+            <label class="form-check-label small" for="t-art">Articulated (multiple pieces)</label>
           </div>
         </div>
 
         <div class="mb-3" id="joint-field" style="display:none;">
-          <label class="form-label fw-semibold">🔩 Junta</label>
+          <label class="form-label fw-semibold">🔩 Joint</label>
           <input type="range" id="joint" class="form-range" value="3" min="1" max="8" step="0.5">
           <div class="text-end small text-muted"><span id="jointVal">3</span> mm</div>
         </div>
 
         <div class="d-grid gap-2">
-          <button id="btn-stl" class="btn btn-gradient btn-sm py-2">📥 Baixar STL</button>
-          <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2">📥 Baixar ZIP</button>
-          <button id="btn-import" class="btn btn-outline-primary btn-sm py-2">📂 Importar STL</button>
+          <button id="btn-stl" class="btn btn-gradient btn-sm py-2">📥 Download STL</button>
+          <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2">📥 Download ZIP</button>
+          <button id="btn-import" class="btn btn-outline-primary btn-sm py-2">📂 Import STL</button>
           <input type="file" id="file-import" accept=".stl" style="display:none;">
-          <button id="btn-import-folder" class="btn btn-outline-info btn-sm py-2">📂 Importar Pasta (vários STL)</button>
+          <button id="btn-import-folder" class="btn btn-outline-info btn-sm py-2">📂 Import Folder (multiple STL files)</button>
           <input type="file" id="folder-import" webkitdirectory directory multiple accept=".stl" style="display:none;">
         </div>
 
         <div class="mt-3">
-          <label class="form-label fw-semibold">📋 Modelos carregados</label>
+          <label class="form-label fw-semibold">📋 Loaded models</label>
           <div class="model-select-box">
-            <label>📂 Selecione um modelo da pasta:</label>
+            <label>📂 Select a model from the folder:</label>
             <select id="model-select" class="form-select form-select-sm">
-              <option value="">-- Nenhum modelo carregado --</option>
+              <option value="">-- No model loaded --</option>
             </select>
             <div class="small text-muted mt-1" id="model-count"></div>
             <button id="btn-save-adjustments" class="btn btn-outline-success btn-sm w-100 mt-2">💾 Salvar ajustes</button>
@@ -116,7 +116,7 @@
         </div>
 
         <div class="mt-3" id="scale-controls" style="display:none;">
-          <label class="form-label fw-semibold">🔍 Ajustar Tamanho</label>
+          <label class="form-label fw-semibold">🔍 Adjust Size</label>
           <div class="d-flex gap-2 align-items-center mb-2">
             <button id="btn-smaller" class="btn btn-outline-secondary btn-sm" title="Diminuir">➖</button>
             <input type="range" id="model-scale" class="form-range" value="100" min="10" max="500" step="5">
@@ -127,68 +127,70 @@
             <span id="model-scale-val" class="fw-bold text-primary">100%</span>
             <span>500%</span>
           </div>
-          <button id="btn-standardize" class="btn btn-success btn-sm w-100">📏 Padronizar (10x10x10 cm)</button>
-          <div class="small text-muted mt-1">Ajusta o modelo para máximo 100×100×100 mm</div>
+          <label for="target-size" class="form-label small mb-1">Final real size (largest dimension, mm)</label>
+          <input type="number" id="target-size" class="form-control form-control-sm mb-2" value="100" min="1" max="150" step="1">
+          <button id="btn-standardize" class="btn btn-success btn-sm w-100">📏 Set Final Size</button>
+          <div class="small text-muted mt-1">Scales the model proportionally to the final size entered above</div>
         </div>
 
         <div class="print-limit">
-          <strong>📏 Limite de impressão:</strong><br>
-          <span class="small">Máximo 15 cm (150 mm) para caber na maioria das impressoras 3D domésticas.</span>
+          <strong>📏 Print limit:</strong><br>
+          <span class="small">Maximum 15 cm (150 mm) to fit most home 3D printers.</span>
         </div>
       </div>
 
-      <!-- Dimensões -->
+      <!-- Dimensions -->
       <div class="dimension-box mb-4">
-        <div class="dimension-label mb-2">📐 Dimensões Reais</div>
+        <div class="dimension-label mb-2">📐 Real Dimensions</div>
         <div class="row g-2 text-center">
           <div class="col-4">
             <div id="dimX" class="dimension-value">--</div>
-            <div class="small text-muted">Largura</div>
+            <div class="small text-muted">Width</div>
           </div>
           <div class="col-4">
             <div id="dimY" class="dimension-value">--</div>
-            <div class="small text-muted">Altura</div>
+            <div class="small text-muted">Height</div>
           </div>
           <div class="col-4">
             <div id="dimZ" class="dimension-value">--</div>
-            <div class="small text-muted">Prof.</div>
+            <div class="small text-muted">Depth</div>
           </div>
         </div>
         <div class="mt-2 pt-2 border-top">
-          <div class="small text-muted">Escala: <span id="scaleDisplay" class="fw-bold text-primary">10</span> mm</div>
+          <div class="small text-muted">Scale: <span id="scaleDisplay" class="fw-bold text-primary">10</span> mm</div>
         </div>
       </div>
 
-      <!-- Detalhes Anatômicos -->
+      <!-- Details Anatômicos -->
       <div class="card border-0">
         <div class="card-body p-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold mb-0">🔬 Detalhes</h6>
-            <span id="animalTag" class="info-badge">Bovino</span>
+            <h6 class="fw-bold mb-0">🔬 Details</h6>
+            <span id="animalTag" class="info-badge">Bovine</span>
           </div>
           <div id="anatomyList" class="detail-list"></div>
         </div>
       </div>
     </div>
 
-    <!-- Visualizador 3D -->
+    <!-- 3D Viewer -->
     <div class="col-12 col-lg-9 order-1 order-lg-2">
       <div class="card border-0 h-100" style="min-height:70vh;">
         <div class="card-body p-0">
           <div id="viewer">
             <canvas id="viewer-canvas"></canvas>
-            <!-- Controles de Transformação -->
+            <!-- Transform Controls -->
             <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1" style="z-index:100;">
-              <button id="btn-translate" class="btn btn-sm btn-outline-primary" title="Mover (T)">✋ Mover</button>
-              <button id="btn-rotate" class="btn btn-sm btn-outline-success" title="Rotacionar (R)">🔄 Rotacionar</button>
-              <button id="btn-align-x" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo X">📐 Alinhar X</button>
-              <button id="btn-align-y" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Y">📐 Alinhar Y</button>
-              <button id="btn-align-z" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Z">📐 Alinhar Z</button>
-              <button id="btn-reset-transform" class="btn btn-sm btn-outline-danger" title="Resetar posição">🔄 Resetar</button>
-              <button id="btn-stand" class="btn btn-sm btn-success" title="Restaurar a orientação original do modelo e apoiar a base no chão (Y para cima)">🐾 Em Pé</button>
-              <button id="btn-lay" class="btn btn-sm btn-warning" title="Deitar o animal girando −90° em torno do eixo longitudinal">🛏️ Deitado</button>
-              <div id="rotation-readout" class="rotation-readout" role="status" aria-live="polite" aria-label="Ângulos atuais de rotação do modelo">
-                <span class="rotation-readout-heading">Rotação atual</span>
+              <button id="btn-translate" class="btn btn-sm btn-outline-primary" title="Move (T)">✋ Move</button>
+              <button id="btn-rotate" class="btn btn-sm btn-outline-success" title="Rotate (R)">🔄 Rotate</button>
+              <button id="btn-align-x" class="btn btn-sm btn-outline-secondary" title="Align to X axis">📐 Align X</button>
+              <button id="btn-align-y" class="btn btn-sm btn-outline-secondary" title="Align to Y axis">📐 Align Y</button>
+              <button id="btn-align-z" class="btn btn-sm btn-outline-secondary" title="Align to Z axis">📐 Align Z</button>
+              <button id="btn-reset-transform" class="btn btn-sm btn-outline-danger" title="Reset position">🔄 Reset</button>
+              <button id="btn-stand" class="btn btn-sm btn-success" title="Restore the original model orientation and place its base on the ground (Y up)">🐾 STANDING</button>
+              <button id="btn-lay" class="btn btn-sm btn-warning" title="Lay the animal down by rotating −90° around its longitudinal axis">🛏️ LYING DOWN</button>
+              <div id="rotation-readout" class="rotation-readout" role="status" aria-live="polite" aria-label="Current model rotation angles">
+                <span class="rotation-readout-heading">Current rotation</span>
                 <div class="rotation-readout-values">
                   <span>X <strong id="rotation-x">0.0°</strong></span>
                   <span>Y <strong id="rotation-y">0.0°</strong></span>
@@ -198,8 +200,8 @@
             </div>
             <div class="loading-overlay" id="loading">
               <div class="spinner-border text-primary mb-2" role="status"></div>
-              <div class="fw-bold">Gerando modelo 3D...</div>
-              <div class="small text-muted mt-1">Construindo geometria detalhada</div>
+              <div class="fw-bold">Generating 3D model...</div>
+              <div class="small text-muted mt-1">Building detailed geometry</div>
             </div>
           </div>
         </div>
@@ -208,14 +210,14 @@
   </div>
 </div>
 
-<!-- Seletor Suspenso no Canto Superior Direito -->
+<!-- Top-right Animal Selector -->
 <div class="animal-selector">
   <select id="animal" class="form-select">
-    <option value="bovino">🐄 Bovino</option>
-    <option value="equino">🐴 Equino</option>
-    <option value="suino">🐷 Suíno</option>
-    <option value="ave">🐓 Ave</option>
-    <option value="ovino">🐑 Ovino</option>
+    <option value="bovino">🐄 Bovine</option>
+    <option value="equino">🐴 Equine</option>
+    <option value="suino">🐷 Swine</option>
+    <option value="ave">🐓 Bird</option>
+    <option value="ovino">🐑 Sheep</option>
   </select>
 </div>
 
@@ -450,7 +452,7 @@ function genPorine(s) {
   return g;
 }
 
-function genAve(s) {
+function genBird(s) {
   s_current = s;
   let g = new Gen();
   g.ellipsoid(1.55*s, 1.65*s, 2.1*s, 0, 3.15*s, 0);
@@ -524,7 +526,7 @@ function genOvine(s) {
   return g;
 }
 
-const SOLID_GENS = { bovino: genBovine, equino: genEquine, suino: genPorine, ave: genAve, ovino: genOvine };
+const SOLID_GENS = { bovino: genBovine, equino: genEquine, suino: genPorine, ave: genBird, ovino: genOvine };
 
 const ANIMAL_DETAILS = {
   bovino: ["Chifres curvos espirais", "Orelhas grandes", "Casco duplo", "Músculos visíveis"],
@@ -605,7 +607,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(w, h);
 });
 
-function showLoading(v, msg="Gerando modelo 3D...") {
+function showLoading(v, msg="Generating 3D model...") {
   loadingOv.replaceChildren();
   loadingOv.style.display = v ? 'block' : 'none';
   if (!v) return;
@@ -617,7 +619,7 @@ function showLoading(v, msg="Gerando modelo 3D...") {
   title.textContent = msg;
   const detail = document.createElement('div');
   detail.className = 'small text-muted mt-1';
-  detail.textContent = 'Construindo geometria detalhada';
+  detail.textContent = 'Building detailed geometry';
   loadingOv.append(spinner, title, detail);
 }
 
@@ -675,10 +677,10 @@ function frameCamera(mesh) {
   camera.position.set(center.x + dist*0.9, center.y + dist*0.6, center.z + dist*0.9);
   controls.update();
 
-  // Atualizar dimensões
-  document.getElementById('dimX').textContent = (size.x * 10).toFixed(1) + ' cm';
-  document.getElementById('dimY').textContent = (size.y * 10).toFixed(1) + ' cm';
-  document.getElementById('dimZ').textContent = (size.z * 10).toFixed(1) + ' cm';
+  // Update dimensions
+  document.getElementById('dimX').textContent = (size.x * 10).toFixed(1) + ' mm';
+  document.getElementById('dimY').textContent = (size.y * 10).toFixed(1) + ' mm';
+  document.getElementById('dimZ').textContent = (size.z * 10).toFixed(1) + ' mm';
   updateRotationReadout(mesh);
 }
 
@@ -722,7 +724,7 @@ function displaySolid(gen) {
   }, 50);
 }
 
-// Modelos importados permanecem em memória e no IndexedDB deste navegador.
+// Models importados permanecem em memória e no IndexedDB deste navegador.
 let importedModels = [];
 const IMPORT_DB_NAME = 'farm-animal-3d-imports';
 const IMPORT_DB_VERSION = 1;
@@ -730,7 +732,7 @@ let restorePromise = null;
 let isImporting = false;
 
 function openImportDatabase() {
-  if (!window.indexedDB) return Promise.reject(new Error('Este navegador não oferece armazenamento local para modelos.'));
+  if (!window.indexedDB) return Promise.reject(new Error('Este navegador não oferece armazenamento local para models.'));
   return new Promise((resolve, reject) => {
     const request = window.indexedDB.open(IMPORT_DB_NAME, IMPORT_DB_VERSION);
     request.onupgradeneeded = () => {
@@ -742,8 +744,8 @@ function openImportDatabase() {
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('Não foi possível abrir o armazenamento local.'));
-    request.onblocked = () => reject(new Error('O armazenamento local está ocupado por outra aba. Feche a outra aba e tente novamente.'));
+    request.onerror = () => reject(request.error || new Error('Could not open local storage.'));
+    request.onblocked = () => reject(new Error('Local storage is busy in another tab. Close the other tab and try again.'));
   });
 }
 
@@ -756,7 +758,7 @@ function saveStoredFile(db, record) {
     const transaction = db.transaction('files', 'readwrite');
     transaction.objectStore('files').put(record);
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error('Falha ao salvar um STL no navegador.'));
+    transaction.onerror = () => reject(transaction.error || new Error('Failed to save an STL in the browser.'));
     transaction.onabort = () => reject(transaction.error || new Error('O navegador cancelou o salvamento do STL.'));
   });
 }
@@ -776,8 +778,8 @@ function readActiveFiles(db) {
     };
     activeRequest.onerror = () => transaction.abort();
     transaction.oncomplete = () => resolve({ collectionId, records });
-    transaction.onerror = () => reject(transaction.error || new Error('Falha ao ler os modelos salvos.'));
-    transaction.onabort = () => reject(transaction.error || new Error('A leitura dos modelos salvos foi cancelada.'));
+    transaction.onerror = () => reject(transaction.error || new Error('Failed to read saved models.'));
+    transaction.onabort = () => reject(transaction.error || new Error('Reading saved models was canceled.'));
   });
 }
 
@@ -800,8 +802,8 @@ function activateCollection(db, collectionId, replacePrevious = true) {
     };
     activeRequest.onerror = () => transaction.abort();
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error('Falha ao ativar a lista de modelos salva.'));
-    transaction.onabort = () => reject(transaction.error || new Error('A atualização da lista salva foi cancelada.'));
+    transaction.onerror = () => reject(transaction.error || new Error('Failed to activate the saved model list.'));
+    transaction.onabort = () => reject(transaction.error || new Error('The saved list update was canceled.'));
   });
 }
 
@@ -815,7 +817,7 @@ function deleteCollection(db, collectionId) {
       if (cursor) { cursor.delete(); cursor.continue(); }
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error('Falha ao remover arquivos temporários.'));
+    transaction.onerror = () => reject(transaction.error || new Error('Failed to remove temporary files.'));
   });
 }
 
@@ -902,15 +904,15 @@ async function importSTL(file) {
       model.storageId = storageId;
       saved = true;
     } catch(storageError) {
-      console.warn('Modelo carregado nesta sessão, mas não foi salvo no navegador:', storageError);
+      console.warn('Model loaded in this session but was not saved in the browser:', storageError);
     }
     importedModels.push(model);
     const savedCount = importedModels.filter(item => item.storageId).length;
-    const status = `${importedModels.length} modelo(s) na lista${saved ? ` • ${savedCount} salvo(s) neste navegador` : ' • este STL ficará disponível só nesta sessão'}`;
-    renderImportedModels(status, `Modelo STL importado: ${model.name}`);
+    const status = `${importedModels.length} model(s) in the list${saved ? ` • ${savedCount} saved in this browser` : ' • this STL will be available only in this session'}`;
+    renderImportedModels(status, `Imported STL model: ${model.name}`);
   } catch(err) {
     console.error('Erro ao importar STL:', err);
-    document.getElementById('model-count').textContent = `Falha ao carregar ${file.name}: ${err.message}`;
+    document.getElementById('model-count').textContent = `Failed to load ${file.name}: ${err.message}`;
     alert(`Não foi possível carregar ${file.name}: ${err.message}`);
   } finally {
     if (db) db.close();
@@ -927,7 +929,7 @@ async function importFolder(fileList) {
   }
   const files = Array.from(fileList || []).filter(file => file.name.toLowerCase().endsWith('.stl'));
   if (!files.length) {
-    document.getElementById('model-count').textContent = 'Nenhum arquivo .stl foi encontrado na pasta selecionada.';
+    document.getElementById('model-count').textContent = 'No .stl files were found in the selected folder.';
     showLoading(false);
     return;
   }
@@ -945,7 +947,7 @@ async function importFolder(fileList) {
       db = await openImportDatabase();
     } catch(err) {
       persistenceError = err;
-      console.warn('O armazenamento persistente não está disponível:', err);
+      console.warn('Persistent storage is unavailable:', err);
     }
 
     for (let index = 0; index < files.length; index++) {
@@ -971,13 +973,13 @@ async function importFolder(fileList) {
         }
       } catch(err) {
         failures.push(`${file.name}: ${err.message}`);
-        console.error('Falha ao ler STL:', file.name, err);
+        console.error('Failed to read STL:', file.name, err);
       }
     }
 
     if (!models.length) {
       if (db) await deleteCollection(db, collectionId).catch(() => {});
-      document.getElementById('model-count').textContent = `Nenhum STL válido foi carregado (${failures.length} falha(s)).`;
+      document.getElementById('model-count').textContent = `No valid STL was loaded (${failures.length} falha(s)).`;
       alert(`Não foi possível carregar os STL selecionados. Confira se os arquivos são válidos.\n${failures.slice(0, 5).join('\n')}`);
       return;
     }
@@ -995,8 +997,8 @@ async function importFolder(fileList) {
 
     disposeImportedModels(importedModels);
     importedModels = models;
-    const status = `${models.length} de ${files.length} STL carregado(s)${persisted ? ' • salvos neste navegador para a próxima visita' : ' • disponíveis nesta sessão; salvamento local indisponível'}`;
-    renderImportedModels(status, `Pasta importada com ${models.length} modelo(s).`);
+    const status = `${models.length} de ${files.length} STL file(s) loaded${persisted ? ' • saved in this browser for the next visit' : ' • available only in this session; local saving unavailable'}`;
+    renderImportedModels(status, `Imported folder with ${models.length} model(s).`);
     if (failures.length) {
       document.getElementById('model-count').textContent += ` ${failures.length} arquivo(s) não foram lidos.`;
       console.warn('STL ignorados:', failures);
@@ -1037,10 +1039,10 @@ async function restoreImportedModels() {
     if (!restored.length) return false;
     importedModels = restored;
     const status = `${restored.length} STL restaurado(s) do armazenamento local${failures.length ? ` • ${failures.length} inválido(s)` : ''}`;
-    renderImportedModels(status, `Modelos restaurados do armazenamento deste navegador (${restored.length}).`);
+    renderImportedModels(status, `Models restored from this browser storage (${restored.length}).`);
     return true;
   } catch(err) {
-    console.warn('Não foi possível restaurar modelos salvos:', err);
+    console.warn('Could not restore saved models:', err);
     return false;
   } finally {
     if (db) db.close();
@@ -1050,7 +1052,7 @@ async function restoreImportedModels() {
 
 function updateModelSelect(status = '') {
   const select = document.getElementById('model-select');
-  select.innerHTML = '<option value="">-- Selecione um modelo --</option>';
+  select.innerHTML = '<option value="">-- Select a model --</option>';
   importedModels.forEach((model, index) => {
     const option = document.createElement('option');
     option.value = index;
@@ -1058,7 +1060,7 @@ function updateModelSelect(status = '') {
     select.appendChild(option);
   });
   select.value = importedModels.length ? '0' : '';
-  document.getElementById('model-count').textContent = status || `${importedModels.length} modelo(s) na lista.`;
+  document.getElementById('model-count').textContent = status || `${importedModels.length}  model(s) in the list.`;
 }
 
 function displayModel(mesh) {
@@ -1096,7 +1098,7 @@ function updateAnatomyInfo() {
   let details = ANIMAL_DETAILS[animal] || [];
   let html = details.map(d => `<div class="detail-item"><span class="detail-dot"></span><span>${d}</span></div>`).join('');
   document.getElementById('anatomyList').innerHTML = html;
-  let tags = {bovino:'🐄 Bovino', equino:'🐴 Equino', suino:'🐷 Suíno', ave:'🐓 Ave', ovino:'🐑 Ovino'};
+  let tags = {bovino:'🐄 Bovine', equino:'🐴 Equine', suino:'🐷 Swine', ave:'🐓 Bird', ovino:'🐑 Sheep'};
   document.getElementById('animalTag').textContent = tags[animal] || animal;
 }
 
@@ -1124,7 +1126,7 @@ function downloadSTL() {
 }
 
 async function downloadZIP() {
-  alert('Funcionalidade ZIP em desenvolvimento. Use STL por enquanto.');
+  alert('ZIP download is still under development. Use STL for now.');
 }
 
 // Event Listeners
@@ -1188,6 +1190,7 @@ function saveAdjustments() {
     form: getVals(),
     selectedModel,
     modelScale: modelScaleSlider ? Number(modelScaleSlider.value) : 100,
+    targetSize: Number(document.getElementById('target-size').value) || 100,
     transform: currentMesh ? {
       position: currentMesh.position.toArray(),
       rotation: currentMesh.rotation.toArray(),
@@ -1196,7 +1199,7 @@ function saveAdjustments() {
   };
   localStorage.setItem(SAVE_ADJUSTMENTS_KEY, JSON.stringify(payload));
   if (saveAdjustmentsStatus) {
-    saveAdjustmentsStatus.textContent = '✓ Ajustes salvos neste navegador';
+    saveAdjustmentsStatus.textContent = '✓ Adjustments saved in this browser';
     setTimeout(() => { saveAdjustmentsStatus.textContent = ''; }, 3000);
   }
 }
@@ -1208,12 +1211,13 @@ function loadSavedFormSettings() {
     if (form.animal && document.getElementById('animal').querySelector(`option[value="${form.animal}"]`)) document.getElementById('animal').value = form.animal;
     if (Number.isFinite(form.scale)) { document.getElementById('scale').value = form.scale; document.getElementById('scaleVal').textContent = form.scale + ' mm'; }
     if (Number.isFinite(form.joint)) { document.getElementById('joint').value = form.joint; document.getElementById('jointVal').textContent = form.joint; }
+    if (Number.isFinite(saved.targetSize)) document.getElementById('target-size').value = saved.targetSize;
     if (form.tipo) {
       const radio = document.querySelector(`input[name="tipo"][value="${form.tipo}"]`);
       if (radio) radio.checked = true;
       document.getElementById('joint-field').style.display = form.tipo === 'articulado' ? 'block' : 'none';
     }
-  } catch (err) { console.warn('Não foi possível restaurar os ajustes salvos:', err); }
+  } catch (err) { console.warn('Could not restore saved adjustments:', err); }
 }
 function restoreSavedAdjustments() {
   try {
@@ -1235,7 +1239,7 @@ function restoreSavedAdjustments() {
       modelScaleSlider.value = saved.modelScale;
       modelScaleVal.textContent = saved.modelScale + '%';
     }
-  } catch (err) { console.warn('Não foi possível restaurar os ajustes do modelo:', err); }
+  } catch (err) { console.warn('Could not restore model adjustments:', err); }
 }
 document.getElementById('btn-save-adjustments').addEventListener('click', saveAdjustments);
 loadSavedFormSettings();
@@ -1267,7 +1271,7 @@ document.getElementById('btn-larger').addEventListener('click', () => {
   updateModelScale(newVal);
 });
 
-// Raycaster para selecionar modelo 3D
+// Raycaster for selecting the 3D model
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let selectedModel = null;
@@ -1307,9 +1311,9 @@ function setupRaycaster() {
     const intersects = raycaster.intersectObject(currentMesh);
 
     if (intersects.length > 0) {
-      console.log('Modelo 3D selecionado!');
+      console.log('Model 3D selecionado!');
 
-      // Destacar modelo selecionado
+      // Highlight selected model
       if (selectedModel && originalMaterial) {
         selectedModel.material = originalMaterial;
       }
@@ -1329,7 +1333,7 @@ function setupRaycaster() {
       // Attach TransformControls
       attachTransformControls(currentMesh);
 
-      // Mostrar controles de escala
+      // Show scale controls
       checkScaleControls();
     }
   });
@@ -1341,13 +1345,13 @@ document.addEventListener('keydown', (event) => {
 
   if (event.key === 't' || event.key === 'T') {
     transformControls.setMode('translate');
-    console.log('Modo: Mover (T)');
+    console.log('Modo: Move (T)');
   } else if (event.key === 'r' || event.key === 'R') {
     transformControls.setMode('rotate');
-    console.log('Modo: Rotacionar (R)');
+    console.log('Modo: Rotate (R)');
   } else if (event.key === 's' || event.key === 'S') {
     transformControls.setMode('scale');
-    console.log('Modo: Escala (S)');
+    console.log('Modo: Scale (S)');
   } else if (event.key === 'Escape') {
     transformControls.reset();
     console.log('Transform reset');
@@ -1356,35 +1360,35 @@ document.addEventListener('keydown', (event) => {
 
 // Transform mode buttons
 document.getElementById('btn-translate').addEventListener('click', () => {
-  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  if (!currentMesh) { alert('Select a 3D model by clicking it'); return; }
   transformControls.setMode('translate');
-  console.log('Modo: Mover');
+  console.log('Modo: Move');
 });
 
 document.getElementById('btn-rotate').addEventListener('click', () => {
-  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  if (!currentMesh) { alert('Select a 3D model by clicking it'); return; }
   transformControls.setMode('rotate');
-  console.log('Modo: Rotacionar');
+  console.log('Modo: Rotate');
 });
 
 // Align buttons
 document.getElementById('btn-align-x').addEventListener('click', () => {
-  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  if (!currentMesh) { alert('Select a 3D model by clicking it'); return; }
   alignModel('x');
 });
 
 document.getElementById('btn-align-y').addEventListener('click', () => {
-  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  if (!currentMesh) { alert('Select a 3D model by clicking it'); return; }
   alignModel('y');
 });
 
 document.getElementById('btn-align-z').addEventListener('click', () => {
-  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  if (!currentMesh) { alert('Select a 3D model by clicking it'); return; }
   alignModel('z');
 });
 
 document.getElementById('btn-reset-transform').addEventListener('click', () => {
-  if (!currentMesh) { alert('Selecione um modelo 3D clicando nele'); return; }
+  if (!currentMesh) { alert('Select a 3D model by clicking it'); return; }
   currentMesh.position.set(0, 0, 0);
   currentMesh.rotation.set(0, 0, 0);
   transformControls.reset();
@@ -1396,7 +1400,7 @@ document.getElementById('btn-reset-transform').addEventListener('click', () => {
   currentMesh.position.y += (box.max.y - box.min.y) / 2;
 
   frameCamera(currentMesh);
-  console.log('Posição reiniciada');
+  console.log('Position reset');
 });
 
 // Align model to axis (reset rotation around that axis)
@@ -1416,7 +1420,7 @@ function alignModel(axis) {
   }
 
   frameCamera(currentMesh);
-  console.log('Modelo alinhado ao eixo:', axis.toUpperCase());
+  console.log('Model aligned to axis:', axis.toUpperCase());
 }
 
 // Controles de alinhamento automático
@@ -1426,7 +1430,7 @@ document.getElementById('btn-stand').addEventListener('click', () => {
   restoreUprightPose(currentMesh);
   attachTransformControls(currentMesh);
   frameCamera(currentMesh);
-  console.log('Modelo restaurado à orientação vertical original (Y para cima) e apoiado no chão');
+  console.log('Model restored to its original upright orientation (Y up) and placed on the ground');
 });
 
 document.getElementById('btn-lay').addEventListener('click', () => {
@@ -1438,30 +1442,32 @@ document.getElementById('btn-lay').addEventListener('click', () => {
   settleModelOnGround(currentMesh);
   attachTransformControls(currentMesh);
   frameCamera(currentMesh);
-  console.log(`Animal deitado com giro de −90° no eixo longitudinal ${bodyAxis.toUpperCase()}`);
+  console.log(`Animal laid down with a −90° rotation around longitudinal axis ${bodyAxis.toUpperCase()}`);
 });
 
 // Botão Padronizar - ajusta para dentro de 100mm (10cm) na maior dimensão
 document.getElementById('btn-standardize').addEventListener('click', () => {
   if (!currentMesh) {
-    alert('Nenhum modelo carregado. Importe um STL primeiro.');
+    alert('No model loaded. Import an STL first.');
     return;
   }
 
-  // Get current bounding box
+  // Measure the current model and fit its largest dimension to the requested real size.
   const box = new THREE.Box3().setFromObject(currentMesh);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
+  const targetInput = document.getElementById('target-size');
+  const targetSize = Math.min(150, Math.max(1, Number(targetInput.value) || 100));
+  targetInput.value = targetSize;
+  // The viewer uses 1 unit = 10 mm for imported STL dimensions.
+  const currentMaxMm = maxDim * 10;
+  const scaleFactor = targetSize / currentMaxMm;
   
-  // Target: 100mm (10cm) maximum dimension - ensures model fits comfortably
-  const targetSize = 100; // 100mm
-  const scaleFactor = targetSize / maxDim;
-  
-  // Aplicar escala mantendo proporção
+  // Apply scale while preserving proportions
   currentMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
   currentMesh.updateMatrixWorld();
   
-  // Atualizar slider e display
+  // Update slider and display
   const percentScale = scaleFactor * 100;
   modelScaleSlider.value = Math.min(500, Math.max(10, percentScale));
   modelScaleVal.textContent = Math.round(percentScale) + '%';
@@ -1469,18 +1475,18 @@ document.getElementById('btn-standardize').addEventListener('click', () => {
   // Reframe camera
   frameCamera(currentMesh);
   
-  // Atualizar dimensões exibidas
+  // Update dimensions exibidas
   const newBox = new THREE.Box3().setFromObject(currentMesh);
   const newSize = newBox.getSize(new THREE.Vector3());
-  document.getElementById('dimX').textContent = (newSize.x * 10).toFixed(1) + ' cm';
-  document.getElementById('dimY').textContent = (newSize.y * 10).toFixed(1) + ' cm';
-  document.getElementById('dimZ').textContent = (newSize.z * 10).toFixed(1) + ' cm';
+  document.getElementById('dimX').textContent = (newSize.x * 10).toFixed(1) + ' mm';
+  document.getElementById('dimY').textContent = (newSize.y * 10).toFixed(1) + ' mm';
+  document.getElementById('dimZ').textContent = (newSize.z * 10).toFixed(1) + ' mm';
   
-  console.log('Modelo padronizado para:', targetSize, 'mm');
-  console.log('Escala aplicada:', scaleFactor);
-  console.log('Dimensões finais:', newSize.x*10, 'x', newSize.y*10, 'x', newSize.z*10, 'cm');
+  console.log('Model scaled to:', targetSize, 'mm');
+  console.log('Applied scale:', scaleFactor);
+  console.log('Final dimensions:', newSize.x*10, 'x', newSize.y*10, 'x', newSize.z*10, 'cm');
   
-  alert(`✅ Modelo padronizado!\n\nDimensões: ${(newSize.x*10).toFixed(1)}×${(newSize.y*10).toFixed(1)}×${(newSize.z*10).toFixed(1)} cm\nEscala: ${Math.round(percentScale)}%`);
+  alert(`✅ Final model size applied!\n\nDimensions: ${(newSize.x*10).toFixed(1)}×${(newSize.y*10).toFixed(1)}×${(newSize.z*10).toFixed(1)} mm\nScale: ${Math.round(percentScale)}%`);
 });
 
 setupRaycaster();
@@ -1500,7 +1506,7 @@ restorePromise = restoreImportedModels().then(restored => {
   restoreSavedAdjustments();
   return restored;
 }).catch(err => {
-  console.warn('Falha ao restaurar a pasta importada; carregando o modelo padrão:', err);
+  console.warn('Failed to restore the imported folder; loading the default model:', err);
   regenerate();
   return false;
 });
