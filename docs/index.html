@@ -94,7 +94,7 @@
         </div>
 
         <div class="d-grid gap-2">
-          <button id="btn-stl" class="btn btn-gradient btn-sm py-2">📥 Download STL</button>
+          <button id="btn-stl" class="btn btn-gradient btn-sm py-2">📥 Export STL for 3D Printing</button>
           <button id="btn-zip" class="btn btn-outline-dark btn-sm py-2">📥 Download ZIP</button>
           <button id="btn-import" class="btn btn-outline-primary btn-sm py-2">📂 Import STL</button>
           <input type="file" id="file-import" accept=".stl" style="display:none;">
@@ -234,6 +234,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 
 /* =====================================================================
    GERADOR DE GEOMETRIA
@@ -1110,18 +1111,38 @@ function regenerate() {
 }
 
 function downloadSTL() {
-  let v = getVals();
-  showLoading(true);
+  if (!currentMesh) {
+    alert('No model loaded. Import or generate a model first.');
+    return;
+  }
+  showLoading(true, 'Preparing STL for 3D printing...');
   setTimeout(() => {
-    let buf = SOLID_GENS[v.animal](v.scale).toSTL(v.animal);
-    let blob = new Blob([buf], {type: 'application/octet-stream'});
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement('a');
-    a.href = url;
-    a.download = `${v.animal}_${Math.round(v.scale*10)}mm.stl`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showLoading(false);
+    try {
+      // Export the exact mesh shown in the viewer, including size, rotation and position.
+      currentMesh.updateMatrixWorld(true);
+      const exportMesh = currentMesh.clone();
+      exportMesh.geometry = currentMesh.geometry.clone();
+      exportMesh.scale.multiplyScalar(10); // Viewer convention: 1 scene unit = 10 mm.
+      exportMesh.updateMatrixWorld(true);
+      const exporter = new STLExporter();
+      const stlData = exporter.parse(exportMesh, { binary: true });
+      const blob = new Blob([stlData], { type: 'model/stl' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const importedIndex = parseInt(document.getElementById('model-select').value);
+      const importedName = Number.isInteger(importedIndex) && importedModels[importedIndex] ? importedModels[importedIndex].name : getVals().animal;
+      const safeName = String(importedName).replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '') || 'farm_animal';
+      link.href = url;
+      link.download = `${safeName}_print_ready.stl`;
+      link.click();
+      URL.revokeObjectURL(url);
+      exportMesh.geometry.dispose();
+    } catch (err) {
+      console.error('STL export failed:', err);
+      alert(`Could not export STL: ${err.message}`);
+    } finally {
+      showLoading(false);
+    }
   }, 50);
 }
 
