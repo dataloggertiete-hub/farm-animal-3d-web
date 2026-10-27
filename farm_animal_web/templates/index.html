@@ -56,14 +56,6 @@
           <form id="params-form" novalidate>
             <fieldset class="mb-3">
               <legend class="form-label small">🐄 Espécie</legend>
-              <select name="animal" id="animal-select" class="form-select form-select-sm" required>
-                {% for key in especies %}
-                <option value="{{ key }}" {% if key == 'bovino' %}selected{% endif %}>
-                  {% if key == 'bovino' %}🐄{% elif key == 'equino' %}🐴{% elif key == 'suino' %}🐷{% elif key == 'ave' %}🐔{% else %}🐑{% endif %}
-                  {{ key.capitalize() }}
-                </option>
-                {% endfor %}
-              </select>
             </fieldset>
 
             <fieldset class="mb-3">
