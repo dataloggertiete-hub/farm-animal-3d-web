@@ -178,7 +178,7 @@
               <button id="btn-align-y" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Y">📐 Alinhar Y</button>
               <button id="btn-align-z" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Z">📐 Alinhar Z</button>
               <button id="btn-reset-transform" class="btn btn-sm btn-outline-danger" title="Resetar posição">🔄 Resetar</button>
-              <button id="btn-stand" class="btn btn-sm btn-success" title="Deixa o animal em pé">🐾 Em Pé</button>
+              <button id="btn-stand" class="btn btn-sm btn-success" title="Restaurar a orientação original do modelo e apoiar a base no chão (Y para cima)">🐾 Em Pé</button>
               <button id="btn-lay" class="btn btn-sm btn-warning" title="Deixa o animal deitado para imprimir">🛏️ Deitado</button>
             </div>
             <div class="loading-overlay" id="loading">
@@ -607,6 +607,12 @@ function clearCurrent() {
   }
 }
 
+function rememberUprightPose(mesh) {
+  if (mesh && !mesh.userData.uprightQuaternion) {
+    mesh.userData.uprightQuaternion = mesh.quaternion.clone();
+  }
+}
+
 function frameCamera(mesh) {
   let box = new THREE.Box3().setFromObject(mesh);
   let center = box.getCenter(new THREE.Vector3());
@@ -630,6 +636,7 @@ function displaySolid(gen) {
       clearCurrent();
       let geo = gen.toGeometry();
       currentMesh = new THREE.Mesh(geo, makeMaterial());
+      rememberUprightPose(currentMesh);
       currentMesh.castShadow = true;
       currentMesh.receiveShadow = true;
 
@@ -779,6 +786,7 @@ function updateModelSelect() {
 
 function displayModel(mesh) {
   clearCurrent();
+  rememberUprightPose(mesh);
   currentMesh = mesh;
   scene.add(currentMesh);
   frameCamera(currentMesh);
@@ -790,6 +798,7 @@ function selectModel(index) {
   if (index < 0 || index >= importedModels.length) return;
   clearCurrent();
   currentMesh = importedModels[index].mesh;
+  rememberUprightPose(currentMesh);
   scene.add(currentMesh);
   frameCamera(currentMesh);
   document.getElementById('animalTag').textContent = '📂 ' + importedModels[index].name;
@@ -1080,24 +1089,20 @@ function alignModel(axis) {
 // Controles de alinhamento automático
 document.getElementById('btn-stand').addEventListener('click', () => {
   if (!currentMesh) return;
-  
-  // Resetar transformações
+
+  // Os modelos da fazenda usam Y como eixo vertical. Restaure a pose original
+  // salva para esta malha e assente a base no chão sem girar o animal no eixo Y.
+  transformControls.detach();
   currentMesh.position.set(0, 0, 0);
-  currentMesh.rotation.set(0, 0, 0);
-  transformControls.reset();
-  
-  // Alinhar para ficar em pé (Y-axis vertical)
-  // Rotacionar para ficar de lado (X-axis) e depois levantar (Y-axis)
-  currentMesh.rotation.y = Math.PI / 2;  // 90 graus
-  
-  // Ajustar posição para ficar em pé
-  let box = new THREE.Box3().setFromObject(currentMesh);
-  let center = box.getCenter(new THREE.Vector3());
-  currentMesh.position.sub(center);
-  currentMesh.position.y += (box.max.y - box.min.y) / 2 + 0.2;  // Elevar um pouco
-  
+  currentMesh.quaternion.copy(currentMesh.userData.uprightQuaternion || new THREE.Quaternion());
+  currentMesh.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(currentMesh);
+  const center = box.getCenter(new THREE.Vector3());
+  currentMesh.position.set(-center.x, -box.min.y, -center.z);
+  currentMesh.updateMatrixWorld(true);
+  attachTransformControls(currentMesh);
   frameCamera(currentMesh);
-  console.log('Animal alinhado para ficar em pé');
+  console.log('Modelo restaurado à orientação vertical original (Y para cima) e apoiado no chão');
 });
 
 document.getElementById('btn-lay').addEventListener('click', () => {

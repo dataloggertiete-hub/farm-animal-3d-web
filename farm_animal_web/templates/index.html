@@ -16,6 +16,13 @@
   }
   #viewer-canvas { display: block; width: 100%; height: 100%; }
   .viewer-loading { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#666; }
+  .viewer-toolbar {
+    position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:5;
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px;
+    max-width:calc(100% - 20px); padding:8px; border-radius:10px;
+    background:rgba(255,255,255,.94); box-shadow:0 2px 12px rgba(0,0,0,.16);
+  }
+  .viewer-toolbar .btn { white-space:nowrap; }
   .info-panel { font-size: 0.85rem; color: #666; }
   .species-icon { font-size: 1.2rem; margin-right: 0.5rem; }
   @media (max-width: 991px) {
@@ -114,6 +121,14 @@
         <div class="card-body p-0">
           <div id="viewer-container">
             <canvas id="viewer-canvas"></canvas>
+            <div class="viewer-toolbar" id="viewer-toolbar" role="group" aria-label="Orientação do modelo 3D">
+              <span class="small text-muted px-1">Giro: 15° • Y vertical</span>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-rotate-axis="x" data-rotate-step="-1" aria-label="Girar -15 graus no eixo X" title="Girar -15° no eixo X">X−</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-rotate-axis="x" data-rotate-step="1" aria-label="Girar +15 graus no eixo X" title="Girar +15° no eixo X">X+</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-rotate-axis="y" data-rotate-step="-1" aria-label="Girar -15 graus no eixo Y" title="Girar -15° no eixo Y">Y−</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-rotate-axis="y" data-rotate-step="1" aria-label="Girar +15 graus no eixo Y" title="Girar +15° no eixo Y">Y+</button>
+              <button type="button" id="btn-align-upright" class="btn btn-primary btn-sm" title="Restaurar o eixo Y original do STL (para cima) e apoiar a base no chão">Alinhar em pé</button>
+            </div>
             <div class="viewer-loading" id="loading-msg">
               <div class="spinner-border spinner-border-sm me-2" role="status"></div>
               Gerando modelo...
@@ -142,6 +157,7 @@ import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 
 // ========== Estado ==========
 let scene, camera, renderer, controls, currentModel;
+const uprightModelRotation = new THREE.Euler(0, 0, 0, 'XYZ');
 const container = document.getElementById('viewer-container');
 const canvas = document.getElementById('viewer-canvas');
 const loadingMsg = document.getElementById('loading-msg');
@@ -265,14 +281,9 @@ async function loadSTL(url) {
     currentModel.receiveShadow = true;
     scene.add(currentModel);
 
-    // Ajustar câmera ao modelo
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const dist = maxDim * 2.5;
-    controls.target.set(0, size.y / 2, 0);
-    camera.position.set(dist, dist * 0.7, dist);
-    controls.update();
+    uprightModelRotation.set(0, 0, 0, 'XYZ');
+    placeModelOnGround();
+    frameModel(currentModel);
 
     showLoading(false);
   } catch (err) {
@@ -285,6 +296,55 @@ async function loadSTL(url) {
 function showLoading(show) { loadingMsg.classList.toggle('d-none', !show); }
 function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.remove('d-none'); }
 function hideError() { errorMsg.classList.add('d-none'); }
+
+function getCurrentModelBounds() {
+  currentModel.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(currentModel);
+}
+
+function placeModelOnGround() {
+  if (!currentModel) return;
+  currentModel.position.set(0, 0, 0);
+  let bounds = getCurrentModelBounds();
+  const center = bounds.getCenter(new THREE.Vector3());
+  currentModel.position.set(-center.x, -bounds.min.y, -center.z);
+  currentModel.updateMatrixWorld(true);
+}
+
+function frameModel(model) {
+  const bounds = new THREE.Box3().setFromObject(model);
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const dist = Math.max(size.x, size.y, size.z) * 2.5;
+  controls.target.copy(center);
+  camera.position.set(center.x + dist, center.y + dist * 0.7, center.z + dist);
+  controls.update();
+}
+
+function keepCameraFocusedOnModel() {
+  if (!currentModel) return;
+  const oldTarget = controls.target.clone();
+  const bounds = getCurrentModelBounds();
+  const center = bounds.getCenter(new THREE.Vector3());
+  const shift = center.sub(oldTarget);
+  camera.position.add(shift);
+  controls.target.add(shift);
+  controls.update();
+}
+
+function rotateCurrentModel(axis, direction) {
+  if (!currentModel) return;
+  currentModel.rotation[axis] += direction * Math.PI / 12;
+  placeModelOnGround();
+  keepCameraFocusedOnModel();
+}
+
+function alignCurrentModelUpright() {
+  if (!currentModel) return;
+  currentModel.rotation.copy(uprightModelRotation);
+  placeModelOnGround();
+  keepCameraFocusedOnModel();
+}
 
 // ========== Gerar modelo via API ==========
 async function generateModel(download = false) {
@@ -360,6 +420,11 @@ async function generateModel(download = false) {
 // ========== Eventos ==========
 document.getElementById('btn-regenerate').addEventListener('click', () => generateModel(false));
 document.getElementById('btn-download').addEventListener('click', () => generateModel(true));
+document.getElementById('viewer-toolbar').addEventListener('click', event => {
+  const button = event.target.closest('[data-rotate-axis]');
+  if (button) rotateCurrentModel(button.dataset.rotateAxis, Number(button.dataset.rotateStep));
+});
+document.getElementById('btn-align-upright').addEventListener('click', alignCurrentModelUpright);
 
 // Auto-regenerar ao mudar parâmetros (com debounce)
 let debounceTimer;
