@@ -179,7 +179,7 @@
               <button id="btn-align-z" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Z">📐 Alinhar Z</button>
               <button id="btn-reset-transform" class="btn btn-sm btn-outline-danger" title="Resetar posição">🔄 Resetar</button>
               <button id="btn-stand" class="btn btn-sm btn-success" title="Restaurar a orientação original do modelo e apoiar a base no chão (Y para cima)">🐾 Em Pé</button>
-              <button id="btn-lay" class="btn btn-sm btn-warning" title="Deixa o animal deitado para imprimir">🛏️ Deitado</button>
+              <button id="btn-lay" class="btn btn-sm btn-warning" title="Deitar o animal sobre o lado, girando em torno do eixo do corpo">🛏️ Deitado</button>
             </div>
             <div class="loading-overlay" id="loading">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -591,8 +591,19 @@ window.addEventListener('resize', () => {
 });
 
 function showLoading(v, msg="Gerando modelo 3D...") {
-  loadingOv.innerHTML = v ? '<div class="spinner-border text-primary mb-2" role="status"></div><div class="fw-bold">' + msg + '</div><div class="small text-muted mt-1">Construindo geometria detalhada</div>' : '';
+  loadingOv.replaceChildren();
   loadingOv.style.display = v ? 'block' : 'none';
+  if (!v) return;
+  const spinner = document.createElement('div');
+  spinner.className = 'spinner-border text-primary mb-2';
+  spinner.setAttribute('role', 'status');
+  const title = document.createElement('div');
+  title.className = 'fw-bold';
+  title.textContent = msg;
+  const detail = document.createElement('div');
+  detail.className = 'small text-muted mt-1';
+  detail.textContent = 'Construindo geometria detalhada';
+  loadingOv.append(spinner, title, detail);
 }
 
 function makeMaterial() {
@@ -602,15 +613,41 @@ function makeMaterial() {
 function clearCurrent() {
   if (currentMesh) {
     scene.remove(currentMesh);
-    if (currentMesh.geometry) currentMesh.geometry.dispose();
+    const isRetainedImport = importedModels.some(model => model.mesh === currentMesh);
+    if (!isRetainedImport) {
+      if (currentMesh.geometry) currentMesh.geometry.dispose();
+      if (Array.isArray(currentMesh.material)) currentMesh.material.forEach(material => material.dispose());
+      else if (currentMesh.material) currentMesh.material.dispose();
+    }
     currentMesh = null;
   }
 }
 
 function rememberUprightPose(mesh) {
-  if (mesh && !mesh.userData.uprightQuaternion) {
-    mesh.userData.uprightQuaternion = mesh.quaternion.clone();
+  if (mesh && !mesh.userData.uprightPose) {
+    mesh.userData.uprightPose = {
+      position: mesh.position.clone(),
+      quaternion: mesh.quaternion.clone()
+    };
   }
+}
+
+function restoreUprightPose(mesh) {
+  const pose = mesh.userData.uprightPose;
+  mesh.position.copy(pose?.position || new THREE.Vector3());
+  mesh.quaternion.copy(pose?.quaternion || new THREE.Quaternion());
+  settleModelOnGround(mesh);
+}
+
+function settleModelOnGround(mesh) {
+  mesh.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(mesh);
+  if (bounds.isEmpty()) return;
+  const center = bounds.getCenter(new THREE.Vector3());
+  mesh.position.x -= center.x;
+  mesh.position.y -= bounds.min.y;
+  mesh.position.z -= center.z;
+  mesh.updateMatrixWorld(true);
 }
 
 function frameCamera(mesh) {
@@ -635,15 +672,17 @@ function displaySolid(gen) {
     try {
       clearCurrent();
       let geo = gen.toGeometry();
+      geo.computeBoundingBox();
+      const localBounds = geo.boundingBox.clone();
+      const center = localBounds.getCenter(new THREE.Vector3());
+      const size = localBounds.getSize(new THREE.Vector3());
+      geo.translate(-center.x, -center.y, -center.z);
       currentMesh = new THREE.Mesh(geo, makeMaterial());
+      currentMesh.position.set(0, size.y / 2, 0);
+      currentMesh.userData.longitudinalAxis = 'z';
       rememberUprightPose(currentMesh);
       currentMesh.castShadow = true;
       currentMesh.receiveShadow = true;
-
-      let box = new THREE.Box3().setFromObject(currentMesh);
-      let center = box.getCenter(new THREE.Vector3());
-      currentMesh.position.sub(center);
-      currentMesh.position.y += (box.max.y - box.min.y) / 2;
 
       scene.add(currentMesh);
       frameCamera(currentMesh);
@@ -655,133 +694,343 @@ function displaySolid(gen) {
   }, 50);
 }
 
-// Armazenamento de modelos importados
+// Modelos importados permanecem em memória e no IndexedDB deste navegador.
 let importedModels = [];
+const IMPORT_DB_NAME = 'farm-animal-3d-imports';
+const IMPORT_DB_VERSION = 1;
+let restorePromise = null;
+let isImporting = false;
 
-function importSTL(file) {
-  console.log('Starting importSTL for:', file.name);
-  showLoading(true, 'Carregando ' + file.name + '...');
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      console.log('File loaded successfully');
-      const loader = new STLLoader();
-      const geometry = loader.parse(e.target.result);
-      const mesh = new THREE.Mesh(geometry, makeMaterial());
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
-      // Centralizar
-      let box = new THREE.Box3().setFromObject(mesh);
-      let center = box.getCenter(new THREE.Vector3());
-      mesh.position.sub(center);
-      mesh.position.y += (box.max.y - box.min.y) / 2;
-
-      // Salvar modelo
-      const modelName = file.name.replace('.stl', '');
-      importedModels.push({ name: modelName, mesh: mesh, geometry: geometry });
-
-      // Atualizar menu de seleção
-      updateModelSelect();
-
-      // Exibir
-      displayModel(mesh);
-      
-      // Reset scale controls
-      modelScaleSlider.value = 100;
-      modelScaleVal.textContent = '100%';
-      checkScaleControls();
-
-      document.getElementById('animalTag').textContent = '📂 ' + modelName;
-      document.getElementById('anatomyList').innerHTML = '<div class="text-muted small">Modelo STL importado: ' + modelName + '</div>';
-      showLoading(false);
-    } catch(err) {
-      console.error('Error importing STL:', err);
-      alert('Erro ao carregar STL: ' + err.message + '\n\nVeja o console (F12) para detalhes.');
-      showLoading(false);
-    }
-  };
-  reader.onerror = function() {
-    console.error('FileReader error');
-    alert('Erro ao ler arquivo. Tente novamente.');
-    showLoading(false);
-  };
-  reader.readAsArrayBuffer(file);
+function openImportDatabase() {
+  if (!window.indexedDB) return Promise.reject(new Error('Este navegador não oferece armazenamento local para modelos.'));
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(IMPORT_DB_NAME, IMPORT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('files')) {
+        const files = db.createObjectStore('files', { keyPath: 'id' });
+        files.createIndex('collectionId', 'collectionId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Não foi possível abrir o armazenamento local.'));
+    request.onblocked = () => reject(new Error('O armazenamento local está ocupado por outra aba. Feche a outra aba e tente novamente.'));
+  });
 }
 
-function importFolder(fileList) {
-  console.log('Starting importFolder with', fileList.length, 'files');
-  showLoading(true, 'Importando pasta...');
-  importedModels = [];
-  let loaded = 0;
-  const total = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.stl')).length;
+function createCollectionId() {
+  return window.crypto && crypto.randomUUID ? crypto.randomUUID() : `models-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
-  if (total === 0) {
-    alert('Nenhum arquivo STL encontrado na pasta.');
+function saveStoredFile(db, record) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('files', 'readwrite');
+    transaction.objectStore('files').put(record);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error || new Error('Falha ao salvar um STL no navegador.'));
+    transaction.onabort = () => reject(transaction.error || new Error('O navegador cancelou o salvamento do STL.'));
+  });
+}
+
+function readActiveFiles(db) {
+  return new Promise((resolve, reject) => {
+    let collectionId = null;
+    let records = [];
+    const transaction = db.transaction(['meta', 'files'], 'readonly');
+    const activeRequest = transaction.objectStore('meta').get('activeCollection');
+    activeRequest.onsuccess = () => {
+      collectionId = activeRequest.result?.collectionId || null;
+      if (!collectionId) return;
+      const filesRequest = transaction.objectStore('files').index('collectionId').getAll(IDBKeyRange.only(collectionId));
+      filesRequest.onsuccess = () => { records = filesRequest.result || []; };
+      filesRequest.onerror = () => transaction.abort();
+    };
+    activeRequest.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve({ collectionId, records });
+    transaction.onerror = () => reject(transaction.error || new Error('Falha ao ler os modelos salvos.'));
+    transaction.onabort = () => reject(transaction.error || new Error('A leitura dos modelos salvos foi cancelada.'));
+  });
+}
+
+function activateCollection(db, collectionId, replacePrevious = true) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['files', 'meta'], 'readwrite');
+    const files = transaction.objectStore('files');
+    const meta = transaction.objectStore('meta');
+    const activeRequest = meta.get('activeCollection');
+    activeRequest.onsuccess = () => {
+      const previousId = activeRequest.result?.collectionId;
+      if (replacePrevious && previousId && previousId !== collectionId) {
+        const cursorRequest = files.index('collectionId').openCursor(IDBKeyRange.only(previousId));
+        cursorRequest.onsuccess = event => {
+          const cursor = event.target.result;
+          if (cursor) { cursor.delete(); cursor.continue(); }
+        };
+      }
+      meta.put({ key: 'activeCollection', collectionId });
+    };
+    activeRequest.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error || new Error('Falha ao ativar a lista de modelos salva.'));
+    transaction.onabort = () => reject(transaction.error || new Error('A atualização da lista salva foi cancelada.'));
+  });
+}
+
+function deleteCollection(db, collectionId) {
+  if (!db || !collectionId) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('files', 'readwrite');
+    const cursorRequest = transaction.objectStore('files').index('collectionId').openCursor(IDBKeyRange.only(collectionId));
+    cursorRequest.onsuccess = event => {
+      const cursor = event.target.result;
+      if (cursor) { cursor.delete(); cursor.continue(); }
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error || new Error('Falha ao remover arquivos temporários.'));
+  });
+}
+
+function buildImportedModel(fileName, buffer, relativePath = fileName) {
+  const geometry = new STLLoader().parse(buffer);
+  if (!geometry.attributes.position || geometry.attributes.position.count === 0) {
+    geometry.dispose();
+    throw new Error('O arquivo não contém triângulos STL válidos.');
+  }
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox.clone();
+  if (bounds.isEmpty()) {
+    geometry.dispose();
+    throw new Error('O arquivo STL não contém geometria visível.');
+  }
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  geometry.translate(-center.x, -center.y, -center.z);
+  const mesh = new THREE.Mesh(geometry, makeMaterial());
+  mesh.position.set(0, size.y / 2, 0);
+  mesh.userData.longitudinalAxis = size.x > size.z ? 'x' : 'z';
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  rememberUprightPose(mesh);
+  return {
+    name: fileName.replace(/\.stl$/i, ''),
+    relativePath: relativePath || fileName,
+    mesh,
+    geometry,
+    storageId: null
+  };
+}
+
+function disposeImportedModels(models) {
+  const meshes = new Set(models.map(model => model.mesh));
+  if (currentMesh && meshes.has(currentMesh)) {
+    detachTransformControls();
+    scene.remove(currentMesh);
+    currentMesh = null;
+  }
+  if (selectedModel && meshes.has(selectedModel)) {
+    if (selectedModel.material) selectedModel.material.dispose();
+    if (originalMaterial) originalMaterial.dispose();
+    selectedModel = null;
+    originalMaterial = null;
+  }
+  models.forEach(model => {
+    if (model.geometry) model.geometry.dispose();
+    if (model.mesh.material) model.mesh.material.dispose();
+  });
+}
+
+function renderImportedModels(status, description) {
+  updateModelSelect(status);
+  if (!importedModels.length) return;
+  displayModel(importedModels[0].mesh);
+  modelScaleSlider.value = 100;
+  modelScaleVal.textContent = '100%';
+  checkScaleControls();
+  document.getElementById('animalTag').textContent = `📂 ${importedModels[0].name}`;
+  document.getElementById('anatomyList').textContent = description;
+}
+
+async function importSTL(file) {
+  if (restorePromise) await restorePromise;
+  if (isImporting) return;
+  isImporting = true;
+  showLoading(true, `Lendo ${file.name}...`);
+  let db = null;
+  try {
+    const buffer = await file.arrayBuffer();
+    const model = buildImportedModel(file.name, buffer, file.webkitRelativePath || file.name);
+    let saved = false;
+    try {
+      db = await openImportDatabase();
+      const active = await readActiveFiles(db);
+      const collectionId = active.collectionId || createCollectionId();
+      const storageId = `${collectionId}:${createCollectionId()}`;
+      await saveStoredFile(db, {
+        id: storageId, collectionId, name: file.name,
+        relativePath: file.webkitRelativePath || file.name, data: buffer
+      });
+      if (!active.collectionId) await activateCollection(db, collectionId, false);
+      model.storageId = storageId;
+      saved = true;
+    } catch(storageError) {
+      console.warn('Modelo carregado nesta sessão, mas não foi salvo no navegador:', storageError);
+    }
+    importedModels.push(model);
+    const savedCount = importedModels.filter(item => item.storageId).length;
+    const status = `${importedModels.length} modelo(s) na lista${saved ? ` • ${savedCount} salvo(s) neste navegador` : ' • este STL ficará disponível só nesta sessão'}`;
+    renderImportedModels(status, `Modelo STL importado: ${model.name}`);
+  } catch(err) {
+    console.error('Erro ao importar STL:', err);
+    document.getElementById('model-count').textContent = `Falha ao carregar ${file.name}: ${err.message}`;
+    alert(`Não foi possível carregar ${file.name}: ${err.message}`);
+  } finally {
+    if (db) db.close();
+    showLoading(false);
+    isImporting = false;
+  }
+}
+
+async function importFolder(fileList) {
+  if (restorePromise) await restorePromise;
+  if (isImporting) {
+    document.getElementById('model-count').textContent = 'Aguarde a importação atual terminar antes de iniciar outra.';
+    return;
+  }
+  const files = Array.from(fileList || []).filter(file => file.name.toLowerCase().endsWith('.stl'));
+  if (!files.length) {
+    document.getElementById('model-count').textContent = 'Nenhum arquivo .stl foi encontrado na pasta selecionada.';
     showLoading(false);
     return;
   }
 
-  console.log('Found', total, 'STL files to load');
+  isImporting = true;
+  const collectionId = createCollectionId();
+  const models = [];
+  const failures = [];
+  let db = null;
+  let persistenceError = null;
+  showLoading(true, `Preparando ${files.length} arquivo(s) STL...`);
 
-  for (const file of fileList) {
-    if (!file.name.toLowerCase().endsWith('.stl')) continue;
+  try {
+    try {
+      db = await openImportDatabase();
+    } catch(err) {
+      persistenceError = err;
+      console.warn('O armazenamento persistente não está disponível:', err);
+    }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      showLoading(true, `Carregando STL ${index + 1} de ${files.length}: ${file.name}`);
+      await new Promise(resolve => setTimeout(resolve, 0));
       try {
-        console.log('Loaded:', file.name);
-        const loader = new STLLoader();
-        const geometry = loader.parse(e.target.result);
-        const mesh = new THREE.Mesh(geometry, makeMaterial());
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-
-        // Centralizar
-        let box = new THREE.Box3().setFromObject(mesh);
-        let center = box.getCenter(new THREE.Vector3());
-        mesh.position.sub(center);
-        mesh.position.y += (box.max.y - box.min.y) / 2;
-
-        const modelName = file.name.replace('.stl', '');
-        importedModels.push({ name: modelName, mesh: mesh, geometry: geometry });
-      } catch(err) {
-        console.error('Erro ao carregar ' + file.name + ':', err);
-      }
-
-      loaded++;
-      console.log('Progress:', loaded, '/', total);
-      if (loaded >= total) {
-        updateModelSelect();
-        // Exibir o primeiro modelo
-        if (importedModels.length > 0) {
-          displayModel(importedModels[0].mesh);
-          modelScaleSlider.value = 100;
-          modelScaleVal.textContent = '100%';
-          checkScaleControls();
-          document.getElementById('animalTag').textContent = '📂 Pasta (' + importedModels.length + ' modelos)';
-          document.getElementById('anatomyList').innerHTML = 
-            '<div class="text-muted small">Pasta importada com ' + importedModels.length + ' modelos</div>';
+        const buffer = await file.arrayBuffer();
+        const model = buildImportedModel(file.name, buffer, file.webkitRelativePath || file.name);
+        models.push(model);
+        if (db && !persistenceError) {
+          const storageId = `${collectionId}:${index}`;
+          try {
+            await saveStoredFile(db, {
+              id: storageId, collectionId, name: file.name,
+              relativePath: file.webkitRelativePath || file.name, data: buffer
+            });
+            model.storageId = storageId;
+          } catch(err) {
+            persistenceError = err;
+            console.warn('A pasta será exibida nesta sessão, mas não pôde ser salva por completo:', err);
+          }
         }
-        showLoading(false);
+      } catch(err) {
+        failures.push(`${file.name}: ${err.message}`);
+        console.error('Falha ao ler STL:', file.name, err);
       }
-    };
-    reader.onerror = function() {
-      console.error('Erro ao ler arquivo:', file.name);
-    };
-    reader.readAsArrayBuffer(file);
+    }
+
+    if (!models.length) {
+      if (db) await deleteCollection(db, collectionId).catch(() => {});
+      document.getElementById('model-count').textContent = `Nenhum STL válido foi carregado (${failures.length} falha(s)).`;
+      alert(`Não foi possível carregar os STL selecionados. Confira se os arquivos são válidos.\n${failures.slice(0, 5).join('\n')}`);
+      return;
+    }
+
+    let persisted = false;
+    if (db && !persistenceError) {
+      try {
+        await activateCollection(db, collectionId, true);
+        persisted = true;
+      } catch(err) {
+        persistenceError = err;
+      }
+    }
+    if (!persisted && db) await deleteCollection(db, collectionId).catch(() => {});
+
+    disposeImportedModels(importedModels);
+    importedModels = models;
+    const status = `${models.length} de ${files.length} STL carregado(s)${persisted ? ' • salvos neste navegador para a próxima visita' : ' • disponíveis nesta sessão; salvamento local indisponível'}`;
+    renderImportedModels(status, `Pasta importada com ${models.length} modelo(s).`);
+    if (failures.length) {
+      document.getElementById('model-count').textContent += ` ${failures.length} arquivo(s) não foram lidos.`;
+      console.warn('STL ignorados:', failures);
+    }
+  } catch(err) {
+    if (db) await deleteCollection(db, collectionId).catch(() => {});
+    console.error('Erro ao importar pasta:', err);
+    document.getElementById('model-count').textContent = `A importação foi interrompida: ${err.message}`;
+    alert(`A importação da pasta foi interrompida: ${err.message}`);
+  } finally {
+    if (db) db.close();
+    showLoading(false);
+    isImporting = false;
   }
 }
 
-function updateModelSelect() {
+async function restoreImportedModels() {
+  let db = null;
+  try {
+    db = await openImportDatabase();
+    const saved = await readActiveFiles(db);
+    if (!saved.records.length) return false;
+    const records = saved.records.sort((a, b) => (a.relativePath || a.name).localeCompare(b.relativePath || b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    const restored = [];
+    const failures = [];
+    for (let index = 0; index < records.length; index++) {
+      const record = records[index];
+      showLoading(true, `Restaurando STL ${index + 1} de ${records.length}: ${record.name}`);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      try {
+        const model = buildImportedModel(record.name, record.data, record.relativePath);
+        model.storageId = record.id;
+        restored.push(model);
+      } catch(err) {
+        failures.push(`${record.name}: ${err.message}`);
+      }
+    }
+    if (!restored.length) return false;
+    importedModels = restored;
+    const status = `${restored.length} STL restaurado(s) do armazenamento local${failures.length ? ` • ${failures.length} inválido(s)` : ''}`;
+    renderImportedModels(status, `Modelos restaurados do armazenamento deste navegador (${restored.length}).`);
+    return true;
+  } catch(err) {
+    console.warn('Não foi possível restaurar modelos salvos:', err);
+    return false;
+  } finally {
+    if (db) db.close();
+    showLoading(false);
+  }
+}
+
+function updateModelSelect(status = '') {
   const select = document.getElementById('model-select');
   select.innerHTML = '<option value="">-- Selecione um modelo --</option>';
-  importedModels.forEach((m, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = m.name;
-    select.appendChild(opt);
+  importedModels.forEach((model, index) => {
+    const option = document.createElement('option');
+    option.value = index;
+    option.textContent = model.relativePath || model.name;
+    select.appendChild(option);
   });
+  select.value = importedModels.length ? '0' : '';
+  document.getElementById('model-count').textContent = status || `${importedModels.length} modelo(s) na lista.`;
 }
 
 function displayModel(mesh) {
@@ -790,7 +1039,6 @@ function displayModel(mesh) {
   currentMesh = mesh;
   scene.add(currentMesh);
   frameCamera(currentMesh);
-  // Attach TransformControls automatically when displaying a model
   attachTransformControls(currentMesh);
 }
 
@@ -801,8 +1049,7 @@ function selectModel(index) {
   rememberUprightPose(currentMesh);
   scene.add(currentMesh);
   frameCamera(currentMesh);
-  document.getElementById('animalTag').textContent = '📂 ' + importedModels[index].name;
-  // Attach TransformControls automatically when selecting a model
+  document.getElementById('animalTag').textContent = `📂 ${importedModels[index].name}`;
   attachTransformControls(currentMesh);
 }
 
@@ -876,10 +1123,9 @@ document.getElementById('btn-import').addEventListener('click', () => {
   document.getElementById('file-import').click();
 });
 document.getElementById('file-import').addEventListener('change', (e) => {
-  console.log('File selected:', e.target.files && e.target.files[0]);
-  if (e.target.files && e.target.files[0]) {
-    importSTL(e.target.files[0]);
-  }
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (file) importSTL(file);
 });
 
 // Import Folder
@@ -888,10 +1134,9 @@ document.getElementById('btn-import-folder').addEventListener('click', () => {
   document.getElementById('folder-import').click();
 });
 document.getElementById('folder-import').addEventListener('change', (e) => {
-  console.log('Folder selected:', e.target.files && e.target.files.length, 'files');
-  if (e.target.files && e.target.files.length > 0) {
-    importFolder(e.target.files);
-  }
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (files.length) importFolder(files);
 });
 
 // Select model
@@ -943,10 +1188,10 @@ let originalMaterial = null;
 function attachTransformControls(mesh) {
   if (!transformControls || !mesh) return;
   transformControls.detach();
-  transformControls.setObject(mesh);
-  transformControls.showX(true);
-  transformControls.showY(true);
-  transformControls.showZ(true);
+  transformControls.attach(mesh);
+  transformControls.showX = true;
+  transformControls.showY = true;
+  transformControls.showZ = true;
   console.log('TransformControls attached to:', mesh.name || 'model');
 }
 
@@ -1089,17 +1334,8 @@ function alignModel(axis) {
 // Controles de alinhamento automático
 document.getElementById('btn-stand').addEventListener('click', () => {
   if (!currentMesh) return;
-
-  // Os modelos da fazenda usam Y como eixo vertical. Restaure a pose original
-  // salva para esta malha e assente a base no chão sem girar o animal no eixo Y.
   transformControls.detach();
-  currentMesh.position.set(0, 0, 0);
-  currentMesh.quaternion.copy(currentMesh.userData.uprightQuaternion || new THREE.Quaternion());
-  currentMesh.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(currentMesh);
-  const center = box.getCenter(new THREE.Vector3());
-  currentMesh.position.set(-center.x, -box.min.y, -center.z);
-  currentMesh.updateMatrixWorld(true);
+  restoreUprightPose(currentMesh);
   attachTransformControls(currentMesh);
   frameCamera(currentMesh);
   console.log('Modelo restaurado à orientação vertical original (Y para cima) e apoiado no chão');
@@ -1107,23 +1343,14 @@ document.getElementById('btn-stand').addEventListener('click', () => {
 
 document.getElementById('btn-lay').addEventListener('click', () => {
   if (!currentMesh) return;
-  
-  // Resetar transformações
-  currentMesh.position.set(0, 0, 0);
-  currentMesh.rotation.set(0, 0, 0);
-  transformControls.reset();
-  
-  // Deitar o animal (girar para lado)
-  currentMesh.rotation.x = Math.PI / 2;  // 90 graus
-  
-  // Ajustar posição
-  let box = new THREE.Box3().setFromObject(currentMesh);
-  let center = box.getCenter(new THREE.Vector3());
-  currentMesh.position.sub(center);
-  currentMesh.position.y += (box.max.y - box.min.y) / 2;
-  
+  transformControls.detach();
+  restoreUprightPose(currentMesh);
+  const bodyAxis = currentMesh.userData.longitudinalAxis || 'z';
+  currentMesh.rotation[bodyAxis] += Math.PI / 2;
+  settleModelOnGround(currentMesh);
+  attachTransformControls(currentMesh);
   frameCamera(currentMesh);
-  console.log('Animal alinhado para impressão (deitado)');
+  console.log(`Animal deitado sobre o lado pelo eixo longitudinal ${bodyAxis.toUpperCase()}`);
 });
 
 // Botão Padronizar - ajusta para dentro de 100mm (10cm) na maior dimensão
@@ -1180,7 +1407,14 @@ function checkScaleControls() {
 
 // Init
 initThree();
-regenerate();
+restorePromise = restoreImportedModels().then(restored => {
+  if (!restored) regenerate();
+  return restored;
+}).catch(err => {
+  console.warn('Falha ao restaurar a pasta importada; carregando o modelo padrão:', err);
+  regenerate();
+  return false;
+});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
