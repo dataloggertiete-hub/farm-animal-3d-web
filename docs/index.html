@@ -110,6 +110,8 @@
               <option value="">-- Nenhum modelo carregado --</option>
             </select>
             <div class="small text-muted mt-1" id="model-count"></div>
+            <button id="btn-save-adjustments" class="btn btn-outline-success btn-sm w-100 mt-2">💾 Salvar ajustes</button>
+            <div class="small text-success mt-1" id="save-adjustments-status" aria-live="polite"></div>
           </div>
         </div>
 
@@ -1177,6 +1179,66 @@ document.getElementById('model-select').addEventListener('change', (e) => {
 const modelScaleSlider = document.getElementById('model-scale');
 const modelScaleVal = document.getElementById('model-scale-val');
 const scaleControls = document.getElementById('scale-controls');
+const SAVE_ADJUSTMENTS_KEY = 'farm-animal-3d-adjustments-v1';
+const saveAdjustmentsStatus = document.getElementById('save-adjustments-status');
+function saveAdjustments() {
+  const selectedIndex = parseInt(document.getElementById('model-select').value);
+  const selectedModel = Number.isInteger(selectedIndex) && importedModels[selectedIndex] ? importedModels[selectedIndex].name : null;
+  const payload = {
+    form: getVals(),
+    selectedModel,
+    modelScale: modelScaleSlider ? Number(modelScaleSlider.value) : 100,
+    transform: currentMesh ? {
+      position: currentMesh.position.toArray(),
+      rotation: currentMesh.rotation.toArray(),
+      scale: currentMesh.scale.toArray()
+    } : null
+  };
+  localStorage.setItem(SAVE_ADJUSTMENTS_KEY, JSON.stringify(payload));
+  if (saveAdjustmentsStatus) {
+    saveAdjustmentsStatus.textContent = '✓ Ajustes salvos neste navegador';
+    setTimeout(() => { saveAdjustmentsStatus.textContent = ''; }, 3000);
+  }
+}
+function loadSavedFormSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_ADJUSTMENTS_KEY) || 'null');
+    if (!saved || !saved.form) return;
+    const form = saved.form;
+    if (form.animal && document.getElementById('animal').querySelector(`option[value="${form.animal}"]`)) document.getElementById('animal').value = form.animal;
+    if (Number.isFinite(form.scale)) { document.getElementById('scale').value = form.scale; document.getElementById('scaleVal').textContent = form.scale + ' mm'; }
+    if (Number.isFinite(form.joint)) { document.getElementById('joint').value = form.joint; document.getElementById('jointVal').textContent = form.joint; }
+    if (form.tipo) {
+      const radio = document.querySelector(`input[name="tipo"][value="${form.tipo}"]`);
+      if (radio) radio.checked = true;
+      document.getElementById('joint-field').style.display = form.tipo === 'articulado' ? 'block' : 'none';
+    }
+  } catch (err) { console.warn('Não foi possível restaurar os ajustes salvos:', err); }
+}
+function restoreSavedAdjustments() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_ADJUSTMENTS_KEY) || 'null');
+    if (!saved) return;
+    let index = saved.selectedModel ? importedModels.findIndex(model => model.name === saved.selectedModel) : -1;
+    if (index >= 0) {
+      document.getElementById('model-select').value = String(index);
+      selectModel(index);
+    }
+    if (currentMesh && saved.transform) {
+      const t = saved.transform;
+      if (Array.isArray(t.position)) currentMesh.position.fromArray(t.position);
+      if (Array.isArray(t.rotation)) currentMesh.rotation.fromArray(t.rotation);
+      if (Array.isArray(t.scale)) currentMesh.scale.fromArray(t.scale);
+      currentMesh.updateMatrixWorld();
+    }
+    if (modelScaleSlider && Number.isFinite(saved.modelScale)) {
+      modelScaleSlider.value = saved.modelScale;
+      modelScaleVal.textContent = saved.modelScale + '%';
+    }
+  } catch (err) { console.warn('Não foi possível restaurar os ajustes do modelo:', err); }
+}
+document.getElementById('btn-save-adjustments').addEventListener('click', saveAdjustments);
+loadSavedFormSettings();
 
 function updateModelScale(newScale) {
   if (!currentMesh) return;
@@ -1435,6 +1497,7 @@ function checkScaleControls() {
 initThree();
 restorePromise = restoreImportedModels().then(restored => {
   if (!restored) regenerate();
+  restoreSavedAdjustments();
   return restored;
 }).catch(err => {
   console.warn('Falha ao restaurar a pasta importada; carregando o modelo padrão:', err);
