@@ -37,6 +37,11 @@
   .model-select-box { background:#e3f2fd; border-radius:8px; padding:10px 12px; margin-top:10px; }
   .model-select-box label { font-size:0.75rem; font-weight:600; color:#1976d2; margin-bottom:4px; display:block; }
   .model-select-box select { font-size:0.85rem; padding:6px 10px; }
+  .rotation-readout { min-width:136px; padding:6px 8px; border-radius:6px; background:rgba(13,18,40,.92); color:#f8f9fa; font-size:.72rem; line-height:1.35; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .rotation-readout-heading { display:block; margin-bottom:2px; color:#adb5bd; font-size:.62rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .rotation-readout-values { display:flex; justify-content:space-between; gap:8px; }
+  .rotation-readout-values span { white-space:nowrap; }
+  .rotation-readout strong { color:#8be9fd; font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -179,7 +184,15 @@
               <button id="btn-align-z" class="btn btn-sm btn-outline-secondary" title="Alinhar com eixo Z">📐 Alinhar Z</button>
               <button id="btn-reset-transform" class="btn btn-sm btn-outline-danger" title="Resetar posição">🔄 Resetar</button>
               <button id="btn-stand" class="btn btn-sm btn-success" title="Restaurar a orientação original do modelo e apoiar a base no chão (Y para cima)">🐾 Em Pé</button>
-              <button id="btn-lay" class="btn btn-sm btn-warning" title="Deitar o animal sobre o lado, girando em torno do eixo do corpo">🛏️ Deitado</button>
+              <button id="btn-lay" class="btn btn-sm btn-warning" title="Deitar o animal girando −90° em torno do eixo longitudinal">🛏️ Deitado</button>
+              <div id="rotation-readout" class="rotation-readout" role="status" aria-live="polite" aria-label="Ângulos atuais de rotação do modelo">
+                <span class="rotation-readout-heading">Rotação atual</span>
+                <div class="rotation-readout-values">
+                  <span>X <strong id="rotation-x">0.0°</strong></span>
+                  <span>Y <strong id="rotation-y">0.0°</strong></span>
+                  <span>Z <strong id="rotation-z">0.0°</strong></span>
+                </div>
+              </div>
             </div>
             <div class="loading-overlay" id="loading">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -664,6 +677,19 @@ function frameCamera(mesh) {
   document.getElementById('dimX').textContent = (size.x * 10).toFixed(1) + ' cm';
   document.getElementById('dimY').textContent = (size.y * 10).toFixed(1) + ' cm';
   document.getElementById('dimZ').textContent = (size.z * 10).toFixed(1) + ' cm';
+  updateRotationReadout(mesh);
+}
+
+function updateRotationReadout(mesh = currentMesh) {
+  const rotation = mesh?.rotation;
+  for (const axis of ['x', 'y', 'z']) {
+    const field = document.getElementById(`rotation-${axis}`);
+    if (!field) continue;
+    let degrees = rotation ? THREE.MathUtils.radToDeg(rotation[axis]) : 0;
+    degrees = ((degrees + 180) % 360 + 360) % 360 - 180;
+    if (Math.abs(degrees) < 0.05) degrees = 0;
+    field.textContent = `${degrees > 0 ? '+' : ''}${degrees.toFixed(1)}°`;
+  }
 }
 
 function displaySolid(gen) {
@@ -1346,11 +1372,11 @@ document.getElementById('btn-lay').addEventListener('click', () => {
   transformControls.detach();
   restoreUprightPose(currentMesh);
   const bodyAxis = currentMesh.userData.longitudinalAxis || 'z';
-  currentMesh.rotation[bodyAxis] += Math.PI / 2;
+  currentMesh.rotation[bodyAxis] -= Math.PI / 2;
   settleModelOnGround(currentMesh);
   attachTransformControls(currentMesh);
   frameCamera(currentMesh);
-  console.log(`Animal deitado sobre o lado pelo eixo longitudinal ${bodyAxis.toUpperCase()}`);
+  console.log(`Animal deitado com giro de −90° no eixo longitudinal ${bodyAxis.toUpperCase()}`);
 });
 
 // Botão Padronizar - ajusta para dentro de 100mm (10cm) na maior dimensão
