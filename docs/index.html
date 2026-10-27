@@ -1052,7 +1052,7 @@ function updateModelSelect(status = '') {
   importedModels.forEach((model, index) => {
     const option = document.createElement('option');
     option.value = index;
-    option.textContent = model.relativePath || model.name;
+    option.textContent = model.name;
     select.appendChild(option);
   });
   select.value = importedModels.length ? '0' : '';
