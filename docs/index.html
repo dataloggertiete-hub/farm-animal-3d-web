@@ -817,6 +817,7 @@ function getIntegratedReferenceProfile(animal) {
 
 function correctImportedOrientation(mesh) {
   const animal = mesh.userData.referenceAnimal || inferReferenceAnimal(mesh.name);
+  const sourceName = String(mesh.userData.sourceName || mesh.name || '').toLowerCase();
   const reference = getIntegratedReferenceProfile(animal);
   const source = geometryProfile(mesh.geometry, true);
   const permutations = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
@@ -847,6 +848,10 @@ function correctImportedOrientation(mesh) {
   }
   if (!best) return false;
   mesh.quaternion.copy(best.quaternion);
+  if (/rooster/.test(sourceName)) {
+    const uprightCorrection = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+    mesh.quaternion.premultiply(uprightCorrection);
+  }
   mesh.position.set(0, 0, 0);
   mesh.userData.longitudinalAxis = 'z';
   mesh.userData.referenceAnimal = animal;
@@ -1057,6 +1062,7 @@ function buildImportedModel(fileName, buffer, relativePath = fileName) {
   const mesh = new THREE.Mesh(geometry, makeMaterial());
   mesh.position.set(0, size.y / 2, 0);
   mesh.userData.referenceKind = 'imported';
+  mesh.userData.sourceName = relativePath || fileName;
   mesh.userData.referenceAnimal = inferReferenceAnimal(relativePath || fileName);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
