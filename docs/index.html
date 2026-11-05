@@ -1424,7 +1424,6 @@ function saveAdjustments() {
   const payload = {
     form: getVals(),
     selectedModel,
-    modelScale: modelScaleSlider ? Number(modelScaleSlider.value) : 100,
     targetSize: Number(document.getElementById('target-size').value) || 100,
     orientation: document.getElementById('model-orientation').value
   };
@@ -1472,10 +1471,6 @@ function restoreSavedAdjustments() {
         fitMeshToPrintSize(currentMesh, target);
         frameCamera(currentMesh);
       }
-    }
-    if (modelScaleSlider && Number.isFinite(saved.modelScale)) {
-      modelScaleSlider.value = saved.modelScale;
-      updateModelScale(saved.modelScale);
     }
   } catch (err) { console.warn('Could not restore model adjustments:', err); }
 }
